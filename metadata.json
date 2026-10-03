@@ -1,0 +1,6 @@
+{
+  "name": "PT.DSLNG IT Helpdesk Daily Operations & Shift Reporting",
+  "description": "Daily reporting and operations workflow portal for PT Donggi-Senoro LNG ICT Operations. Enforces shift roster eligibility, mandatory VTC physical inspections, immutable audit logs, and superior e-signature approvals.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
