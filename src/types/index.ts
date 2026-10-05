@@ -132,6 +132,8 @@ export interface AuditLogEntry {
   actorBadge: string;
   action: string;
   details: string;
+  reportId?: string;
+  lockHash?: string;
 }
 
 export interface DailyReport {

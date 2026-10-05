@@ -8,6 +8,7 @@ import {
   ServerCheck,
   PhysicalInspectionItem,
   CompanyAsset,
+  AuditLogEntry,
 } from '../types';
 import {
   INITIAL_TEAM_MEMBERS,
@@ -105,6 +106,11 @@ interface AppContextType {
   applyDutyOverride: (engineerId: string, reason: string) => void;
   resetAllData: () => void;
 
+  // System Audit Trail (ISO 27001)
+  systemAuditLogs: AuditLogEntry[];
+  recordAuditLog: (action: string, details: string, reportId?: string, lockHash?: string) => void;
+  clearAuditTrail: () => void;
+
   // Notification Toast
   toastMessage: { text: string; type: 'success' | 'warning' | 'info' | 'error' } | null;
   showToast: (text: string, type?: 'success' | 'warning' | 'info' | 'error') => void;
@@ -116,15 +122,16 @@ interface AppContextType {
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
-const STORAGE_KEY_REPORTS = 'dslng_it_daily_reports_v2';
-const STORAGE_KEY_OVERRIDE = 'dslng_it_roster_override_v2';
-const STORAGE_KEY_USER = 'dslng_it_active_user_v2';
-const STORAGE_KEY_REMINDERS = 'dslng_it_reminders_dispatched_v2';
-const STORAGE_KEY_MANUAL_SCHEDULES = 'dslng_it_schedules_clean_v3';
-const STORAGE_KEY_TEAM_MEMBERS = 'dslng_it_team_members_v6';
-const STORAGE_KEY_SERVERS = 'dslng_it_servers_clean_v3';
-const STORAGE_KEY_ROOMS = 'dslng_it_rooms_clean_v3';
-const STORAGE_KEY_ASSETS = 'dslng_it_assets_clean_v3';
+const STORAGE_KEY_REPORTS = 'dslng_it_daily_reports_v5';
+const STORAGE_KEY_OVERRIDE = 'dslng_it_roster_override_v3';
+const STORAGE_KEY_USER = 'dslng_it_active_user_v3';
+const STORAGE_KEY_REMINDERS = 'dslng_it_reminders_dispatched_v3';
+const STORAGE_KEY_MANUAL_SCHEDULES = 'dslng_it_schedules_clean_v4';
+const STORAGE_KEY_TEAM_MEMBERS = 'dslng_it_team_members_v7';
+const STORAGE_KEY_SERVERS = 'dslng_it_servers_clean_v5';
+const STORAGE_KEY_ROOMS = 'dslng_it_rooms_clean_v5';
+const STORAGE_KEY_ASSETS = 'dslng_it_assets_clean_v5';
+const STORAGE_KEY_SYSTEM_AUDIT = 'dslng_it_system_audit_clean_v2';
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   // Current operational date: 2026-10-04 (October 4, 2026)
@@ -190,6 +197,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY_ASSETS, JSON.stringify(companyAssets));
   }, [companyAssets]);
+
+  // Dynamic System Audit Trail (ISO 27001) - 0 dummy data, recorded live on system actions
+  const [systemAuditLogs, setSystemAuditLogs] = useState<AuditLogEntry[]>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY_SYSTEM_AUDIT);
+      if (saved) return JSON.parse(saved);
+    } catch {
+      // ignore
+    }
+    return [];
+  });
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY_SYSTEM_AUDIT, JSON.stringify(systemAuditLogs));
+  }, [systemAuditLogs]);
 
   // Active user (defaults to Administrator IT DSLNG)
   const [currentUser, setCurrentUser] = useState<TeamMember>(() => {
@@ -331,6 +353,29 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const hideToast = () => setToastMessage(null);
 
+  // Audit Trail Logging Engine (ISO 27001 Compliance)
+  const recordAuditLog = (action: string, details: string, reportId?: string, lockHash?: string) => {
+    const now = new Date().toISOString().replace('T', ' ').substring(0, 19) + ' ' + (currentUser.location === 'Site Uso' ? 'WITA' : 'WIB');
+    const newEntry: AuditLogEntry = {
+      timestamp: now,
+      actorName: currentUser.name,
+      actorRole: currentUser.role === 'ADMINISTRATOR' ? 'Administrator IT (Super Admin)' : currentUser.role === 'ICT_MANAGER' ? 'ICT Operations Manager' : 'Helpdesk Engineer',
+      actorBadge: currentUser.badgeNumber,
+      action,
+      details,
+      reportId,
+      lockHash,
+    };
+    setSystemAuditLogs(prev => [newEntry, ...prev]);
+  };
+
+  const clearAuditTrail = () => {
+    setSystemAuditLogs([]);
+    setReports(prev => prev.map(r => ({ ...r, auditTrail: [] })));
+    localStorage.removeItem(STORAGE_KEY_SYSTEM_AUDIT);
+    showToast('Seluruh rekaman jejak audit ISO 27001 telah dibersihkan.', 'info');
+  };
+
   // Helpdesk & Superior Account Management
   const addHelpdeskEngineer = (data: {
     name: string;
@@ -354,6 +399,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
 
     setTeamMembers(prev => [...prev, newEngineer]);
+    recordAuditLog('HELPDESK_ACCOUNT_CREATED', `Administrator membuat akun Helpdesk Engineer: ${data.name} (${data.badgeNumber}, ${data.location}).`);
     showToast(`Akun Helpdesk Engineer ${data.name} (${data.location}) berhasil dibuat oleh Administrator.`, 'success');
   };
 
@@ -379,6 +425,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
 
     setTeamMembers(prev => [...prev, newSuperior]);
+    recordAuditLog('SUPERIOR_ACCOUNT_CREATED', `Administrator membuat akun Superior / ICT Manager: ${data.name} (${data.badgeNumber}, ${data.location}).`);
     showToast(`Akun Superior / ICT Manager ${data.name} (${data.location}) berhasil dibuat oleh Administrator.`, 'success');
   };
 
@@ -388,6 +435,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setCurrentUser(member);
     }
     const roleTitle = member.role === 'ICT_MANAGER' ? 'Superior / ICT Manager' : member.role === 'ADMINISTRATOR' ? 'Administrator' : 'Helpdesk Engineer';
+    recordAuditLog('USER_ACCOUNT_UPDATED', `Pembaruan profil ${roleTitle}: ${member.name} (${member.badgeNumber}).`);
     showToast(`Data akun ${roleTitle} ${member.name} berhasil diperbarui.`, 'success');
   };
 
@@ -408,6 +456,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setCurrentUser(admin);
     }
     const roleTitle = found.role === 'ICT_MANAGER' ? 'Superior / ICT Manager' : 'Helpdesk Engineer';
+    recordAuditLog('USER_ACCOUNT_DELETED', `Penghapusan akun ${roleTitle}: ${found.name} (${found.badgeNumber}).`);
     showToast(`Akun ${roleTitle} ${found.name} telah dihapus.`, 'info');
   };
 
@@ -422,17 +471,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       id: `srv-${Date.now()}`,
     };
     setServers(prev => [...prev, newServer]);
+    recordAuditLog('SERVER_NODE_CREATED', `Server baru didaftarkan: ${data.name} (${data.location}, ${data.role}).`);
     showToast(`Server ${data.name} (${data.location}) berhasil ditambahkan.`, 'success');
   };
 
   const updateServer = (server: ServerCheck) => {
     setServers(prev => prev.map(s => (s.id === server.id ? server : s)));
+    recordAuditLog('SERVER_NODE_UPDATED', `Konfigurasi server ${server.name} (${server.location}) diperbarui.`);
     showToast(`Data server ${server.name} berhasil diperbarui.`, 'success');
   };
 
   const deleteServer = (id: string) => {
     const found = servers.find(s => s.id === id);
     setServers(prev => prev.filter(s => s.id !== id));
+    recordAuditLog('SERVER_NODE_DELETED', `Server ${found?.name || id} dihapus dari fleet monitoring.`);
     showToast(`Server ${found?.name || ''} telah dihapus.`, 'info');
   };
 
@@ -451,17 +503,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       facilities: data.facilities || 'Display UHD, Mic Array, HDMI/USB-C',
     };
     setMeetingRooms(prev => [...prev, newRoom]);
+    recordAuditLog('MEETING_ROOM_CREATED', `Ruang meeting baru didaftarkan: ${data.roomName} (${data.location}).`);
     showToast(`Ruang meeting ${data.roomName} (${data.location}) berhasil ditambahkan.`, 'success');
   };
 
   const updateMeetingRoom = (room: PhysicalInspectionItem) => {
     setMeetingRooms(prev => prev.map(r => (r.id === room.id ? room : r)));
+    recordAuditLog('MEETING_ROOM_UPDATED', `Fasilitas ruang meeting ${room.roomName} (${room.location}) diperbarui.`);
     showToast(`Data ruang meeting ${room.roomName} berhasil diperbarui.`, 'success');
   };
 
   const deleteMeetingRoom = (id: string) => {
     const found = meetingRooms.find(r => r.id === id);
     setMeetingRooms(prev => prev.filter(r => r.id !== id));
+    recordAuditLog('MEETING_ROOM_DELETED', `Ruang meeting ${found?.roomName || id} dihapus.`);
     showToast(`Ruang meeting ${found?.roomName || ''} telah dihapus.`, 'info');
   };
 
@@ -472,17 +527,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       id: `ast-${Date.now()}`,
     };
     setCompanyAssets(prev => [...prev, newAsset]);
+    recordAuditLog('COMPANY_ASSET_CREATED', `Aset/Lisensi baru didaftarkan: ${data.name} (${data.category}, Vendor: ${data.vendor || '-'}).`);
     showToast(`Aset / Lisensi ${data.name} berhasil ditambahkan.`, 'success');
   };
 
   const updateCompanyAsset = (asset: CompanyAsset) => {
     setCompanyAssets(prev => prev.map(a => (a.id === asset.id ? asset : a)));
+    recordAuditLog('COMPANY_ASSET_UPDATED', `Data lisensi/aset ${asset.name} diperbarui.`);
     showToast(`Data aset ${asset.name} berhasil diperbarui.`, 'success');
   };
 
   const deleteCompanyAsset = (id: string) => {
     const found = companyAssets.find(a => a.id === id);
     setCompanyAssets(prev => prev.filter(a => a.id !== id));
+    recordAuditLog('COMPANY_ASSET_DELETED', `Aset/lisensi ${found?.name || id} dihapus.`);
     showToast(`Aset ${found?.name || ''} telah dihapus.`, 'info');
   };
 
@@ -616,6 +674,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setReports(prev => [newReport, ...prev.filter(r => r.reportDate !== targetDate)]);
     setActiveModal({ type: 'VIEW', reportId: newReport.id, date: targetDate });
 
+    recordAuditLog('REPORT_SUBMITTED_AND_LOCKED', newReport.auditTrail[0].details, newReport.id, newReport.immutableLockHash);
+
     const superiorUser = teamMembers.find(m => m.role === 'ICT_MANAGER');
     const superiorNotifyLabel = superiorUser ? `Superior ICT Manager (${superiorUser.name})` : 'Superior / ICT Manager';
 
@@ -670,6 +730,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       })
     );
 
+    const targetRep = reports.find(r => r.id === reportId);
+    recordAuditLog(
+      decision === 'APPROVED' ? 'SUPERIOR_APPROVED' : 'SUPERIOR_REJECTED',
+      `Approval review completed by ${roleTitle} with decision: ${decision}. Digital Signature stamp: ${stampId}. Feedback: "${comments.substring(0, 80)}${comments.length > 80 ? '...' : ''}"`,
+      reportId,
+      targetRep?.immutableLockHash
+    );
+
     showToast(
       decision === 'APPROVED'
         ? `Report ${reportId} officially APPROVED with E-Signature stamp ${stampId}.`
@@ -701,6 +769,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setServers([]);
     setMeetingRooms([]);
     setCompanyAssets([]);
+    setSystemAuditLogs([]);
 
     setCurrentUser(INITIAL_TEAM_MEMBERS[0]);
     localStorage.removeItem(STORAGE_KEY_REPORTS);
@@ -712,6 +781,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     localStorage.removeItem(STORAGE_KEY_SERVERS);
     localStorage.removeItem(STORAGE_KEY_ROOMS);
     localStorage.removeItem(STORAGE_KEY_ASSETS);
+    localStorage.removeItem(STORAGE_KEY_SYSTEM_AUDIT);
     showToast('Seluruh data helpdesk, shift schedule, meeting rooms, servers, dan laporan telah direset ke status awal.', 'info');
   };
 
@@ -768,6 +838,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         reviewDailyReport,
         applyDutyOverride,
         resetAllData,
+        systemAuditLogs,
+        recordAuditLog,
+        clearAuditTrail,
         toastMessage,
         showToast,
         hideToast,
