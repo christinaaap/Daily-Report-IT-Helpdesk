@@ -9,6 +9,7 @@ import {
   PhysicalInspectionItem,
   CompanyAsset,
   AuditLogEntry,
+  UserRole,
 } from '../types';
 import {
   INITIAL_TEAM_MEMBERS,
@@ -33,6 +34,16 @@ interface AppContextType {
   currentUser: TeamMember;
   setCurrentUser: (user: TeamMember) => void;
   teamMembers: TeamMember[];
+  registerAccount: (data: {
+    name: string;
+    email: string;
+    badgeNumber: string;
+    location: Location;
+    role: UserRole;
+    shift?: string;
+    phone?: string;
+    password?: string;
+  }) => TeamMember;
   addHelpdeskEngineer: (data: {
     name: string;
     email: string;
@@ -132,7 +143,7 @@ const STORAGE_KEY_OVERRIDE = 'dslng_it_roster_override_v3';
 const STORAGE_KEY_USER = 'dslng_it_active_user_v3';
 const STORAGE_KEY_REMINDERS = 'dslng_it_reminders_dispatched_v3';
 const STORAGE_KEY_MANUAL_SCHEDULES = 'dslng_it_schedules_clean_v4';
-const STORAGE_KEY_TEAM_MEMBERS = 'dslng_it_team_members_v7';
+const STORAGE_KEY_TEAM_MEMBERS = 'dslng_it_team_members_v8';
 const STORAGE_KEY_SERVERS = 'dslng_it_servers_clean_v5';
 const STORAGE_KEY_ROOMS = 'dslng_it_rooms_clean_v5';
 const STORAGE_KEY_ASSETS = 'dslng_it_assets_clean_v5';
@@ -160,14 +171,30 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Current operational date: 2026-10-04 (October 4, 2026)
   const [selectedDate, setSelectedDate] = useState<string>('2026-10-04');
 
-  // Dynamic team members (0 dummy helpdesk/superior, created by Administrator)
+  // Dynamic team members with Administrator accounts and created users
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY_TEAM_MEMBERS);
       if (saved) {
         const parsed: TeamMember[] = JSON.parse(saved);
         // Exclude legacy dummy superior 'mgr-ict-1' (Hendra Wijaya)
-        const filtered = parsed.filter(m => m.id !== 'mgr-ict-1');
+        let filtered = parsed.filter(m => m.id !== 'mgr-ict-1');
+        // Ensure initial administrator accounts exist and have their passwords set
+        INITIAL_TEAM_MEMBERS.forEach(initMember => {
+          const idx = filtered.findIndex(
+            m => m.email.toLowerCase() === initMember.email.toLowerCase() || m.id === initMember.id
+          );
+          if (idx >= 0) {
+            filtered[idx] = {
+              ...filtered[idx],
+              password: initMember.password,
+              role: initMember.role,
+              badgeNumber: filtered[idx].badgeNumber || initMember.badgeNumber,
+            };
+          } else {
+            filtered.unshift(initMember);
+          }
+        });
         if (filtered.length > 0) return filtered;
       }
     } catch {
@@ -236,7 +263,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     localStorage.setItem(STORAGE_KEY_SYSTEM_AUDIT, JSON.stringify(systemAuditLogs));
   }, [systemAuditLogs]);
 
-  // Active user (defaults to Administrator IT DSLNG)
+  // Active user (defaults to Administrator IT Christina)
   const [currentUser, setCurrentUser] = useState<TeamMember>(() => {
     try {
       const savedUserId = localStorage.getItem(STORAGE_KEY_USER);
@@ -247,7 +274,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } catch {
       // ignore
     }
-    return teamMembers.find(m => m.id === 'admin-it-01') || INITIAL_TEAM_MEMBERS[0];
+    return teamMembers.find(m => m.id === 'admin-christina') || teamMembers.find(m => m.role === 'ADMINISTRATOR') || INITIAL_TEAM_MEMBERS[0];
   });
 
   const [dutyOverrideId, setDutyOverrideId] = useState<string | null>(() => {
@@ -400,7 +427,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // Corporate Authentication & Session Management
-  const login = (userOrIdentifier: string | TeamMember, _password?: string): { success: boolean; message: string } => {
+  const login = (userOrIdentifier: string | TeamMember, password?: string): { success: boolean; message: string } => {
     let targetUser: TeamMember | undefined;
 
     if (typeof userOrIdentifier === 'object') {
@@ -419,8 +446,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (!targetUser) {
       return {
         success: false,
-        message: 'Akun tidak ditemukan dalam Active Directory PT Donggi-Senoro LNG. Hubungi Administrator IT jika membutuhkan akses.',
+        message: 'Akun tidak ditemukan dalam Active Directory PT Donggi-Senoro LNG. Periksa kembali email atau Badge NIK Anda.',
       };
+    }
+
+    // Password verification: check password if set on user
+    if (targetUser.password) {
+      if (!password || password.trim() !== targetUser.password.trim()) {
+        return {
+          success: false,
+          message: 'Kata sandi atau PIN operasional salah. Silakan coba kembali.',
+        };
+      }
     }
 
     setCurrentUser(targetUser);
@@ -443,6 +480,41 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     );
     setIsAuthenticated(false);
     showToast('Anda telah keluar dari sesi operasional ICT PT Donggi-Senoro LNG.', 'info');
+  };
+
+  // Corporate Registration & Account Management
+  const registerAccount = (data: {
+    name: string;
+    email: string;
+    badgeNumber: string;
+    location: Location;
+    role: UserRole;
+    shift?: string;
+    phone?: string;
+    password?: string;
+  }): TeamMember => {
+    const prefix = data.role === 'ADMINISTRATOR' ? 'admin' : data.role === 'ICT_MANAGER' ? 'mgr' : 'eng';
+    const newId = `${prefix}-${Date.now()}`;
+    const defaultShift = data.shift || (data.location === 'Site Uso' ? 'Shift A (06.00 - 18.00 WITA)' : 'Shift A (07.00 - 17.00 WIB)');
+
+    const newMember: TeamMember = {
+      id: newId,
+      name: data.name,
+      email: data.email,
+      badgeNumber: data.badgeNumber,
+      location: data.location,
+      role: data.role,
+      shift: defaultShift,
+      isDutyEligible: data.role === 'ADMINISTRATOR' || (data.role === 'HELPDESK_ENGINEER' && data.location === 'Site Uso'),
+      phone: data.phone || '',
+      password: data.password || '',
+    };
+
+    setTeamMembers(prev => [...prev, newMember]);
+    const roleTitle = data.role === 'ADMINISTRATOR' ? 'Super Administrator' : data.role === 'ICT_MANAGER' ? 'Superior / ICT Manager' : 'Helpdesk Engineer';
+    recordAuditLog('USER_ACCOUNT_REGISTERED', `Pendaftaran akun baru ${roleTitle}: ${data.name} (${data.badgeNumber}, ${data.location}).`);
+    showToast(`Registrasi berhasil! Akun ${roleTitle} ${data.name} telah terdaftar.`, 'success');
+    return newMember;
   };
 
   // Helpdesk & Superior Account Management
@@ -869,6 +941,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         currentUser,
         setCurrentUser,
         teamMembers,
+        registerAccount,
         addHelpdeskEngineer,
         updateHelpdeskEngineer,
         deleteHelpdeskEngineer,

@@ -1,7 +1,20 @@
 import { TeamMember, DailyReport, PhysicalInspectionItem, ServerCheck, LicenseStatus, SLAReminderItem, CompanyAsset } from '../types';
 
 export const INITIAL_TEAM_MEMBERS: TeamMember[] = [
-  // IT Administrator / Super Admin (Akses Penuh & Manajemen Akun Helpdesk / Superior)
+  // IT Administrator / Super Admin Christina (Kredensial: christinaaapps@gmail.com / Pac-tina80)
+  {
+    id: 'admin-christina',
+    name: 'Christina (Administrator IT)',
+    email: 'christinaaapps@gmail.com',
+    badgeNumber: 'DSLNG-ADM-080',
+    location: 'Site Uso',
+    role: 'ADMINISTRATOR',
+    shift: 'Shift A (06.00 - 18.00 WITA)',
+    isDutyEligible: true,
+    phone: '+62 812 3456 7890',
+    password: 'Pac-tina80',
+  },
+  // IT Administrator / Super Admin DSLNG
   {
     id: 'admin-it-01',
     name: 'Administrator IT DSLNG (Super Admin)',
@@ -12,6 +25,7 @@ export const INITIAL_TEAM_MEMBERS: TeamMember[] = [
     shift: 'Shift A (06.00 - 18.00 WITA)',
     isDutyEligible: true,
     phone: '+62 453 312 8000',
+    password: 'Pac-tina80',
   },
 ];
 

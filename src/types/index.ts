@@ -43,6 +43,7 @@ export interface TeamMember {
   isDutyEligible: boolean;
   avatarUrl?: string;
   phone: string;
+  password?: string;
 }
 
 export type ReportStatus = 'PENDING' | 'SUBMITTED' | 'APPROVED' | 'REJECTED';
