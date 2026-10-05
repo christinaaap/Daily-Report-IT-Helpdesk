@@ -25,6 +25,11 @@ import {
 } from '../utils/rosterLogic';
 
 interface AppContextType {
+  // Authentication & Session
+  isAuthenticated: boolean;
+  login: (userOrIdentifier: string | TeamMember, password?: string) => { success: boolean; message: string };
+  logout: () => void;
+
   currentUser: TeamMember;
   setCurrentUser: (user: TeamMember) => void;
   teamMembers: TeamMember[];
@@ -132,8 +137,26 @@ const STORAGE_KEY_SERVERS = 'dslng_it_servers_clean_v5';
 const STORAGE_KEY_ROOMS = 'dslng_it_rooms_clean_v5';
 const STORAGE_KEY_ASSETS = 'dslng_it_assets_clean_v5';
 const STORAGE_KEY_SYSTEM_AUDIT = 'dslng_it_system_audit_clean_v2';
+const STORAGE_KEY_AUTH = 'dslng_it_auth_status_v1';
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  // Session Authentication State (Initializes to false to present the corporate Login Portal)
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
+    try {
+      const savedAuth = localStorage.getItem(STORAGE_KEY_AUTH);
+      if (savedAuth !== null) {
+        return savedAuth === 'true';
+      }
+    } catch {
+      // ignore
+    }
+    return false;
+  });
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY_AUTH, String(isAuthenticated));
+  }, [isAuthenticated]);
+
   // Current operational date: 2026-10-04 (October 4, 2026)
   const [selectedDate, setSelectedDate] = useState<string>('2026-10-04');
 
@@ -374,6 +397,52 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setReports(prev => prev.map(r => ({ ...r, auditTrail: [] })));
     localStorage.removeItem(STORAGE_KEY_SYSTEM_AUDIT);
     showToast('Seluruh rekaman jejak audit ISO 27001 telah dibersihkan.', 'info');
+  };
+
+  // Corporate Authentication & Session Management
+  const login = (userOrIdentifier: string | TeamMember, _password?: string): { success: boolean; message: string } => {
+    let targetUser: TeamMember | undefined;
+
+    if (typeof userOrIdentifier === 'object') {
+      targetUser = userOrIdentifier;
+    } else {
+      const query = userOrIdentifier.trim().toLowerCase();
+      targetUser = teamMembers.find(
+        m =>
+          m.email.toLowerCase() === query ||
+          m.badgeNumber.toLowerCase() === query ||
+          m.id.toLowerCase() === query ||
+          m.name.toLowerCase() === query
+      );
+    }
+
+    if (!targetUser) {
+      return {
+        success: false,
+        message: 'Akun tidak ditemukan dalam Active Directory PT Donggi-Senoro LNG. Hubungi Administrator IT jika membutuhkan akses.',
+      };
+    }
+
+    setCurrentUser(targetUser);
+    setIsAuthenticated(true);
+    recordAuditLog(
+      'USER_LOGIN_SUCCESS',
+      `Autentikasi SSO berhasil untuk ${targetUser.name} (${targetUser.role}) dari lokasi ${targetUser.location}.`
+    );
+    showToast(
+      `Selamat datang, ${targetUser.name} (${targetUser.role === 'ADMINISTRATOR' ? 'Super Admin' : targetUser.role === 'ICT_MANAGER' ? 'Superior' : 'Helpdesk Engineer'}).`,
+      'success'
+    );
+    return { success: true, message: 'Autentikasi berhasil.' };
+  };
+
+  const logout = () => {
+    recordAuditLog(
+      'USER_LOGOUT',
+      `Sesi pengguna ${currentUser.name} (${currentUser.badgeNumber}) telah diakhiri.`
+    );
+    setIsAuthenticated(false);
+    showToast('Anda telah keluar dari sesi operasional ICT PT Donggi-Senoro LNG.', 'info');
   };
 
   // Helpdesk & Superior Account Management
@@ -770,6 +839,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setMeetingRooms([]);
     setCompanyAssets([]);
     setSystemAuditLogs([]);
+    setIsAuthenticated(false);
 
     setCurrentUser(INITIAL_TEAM_MEMBERS[0]);
     localStorage.removeItem(STORAGE_KEY_REPORTS);
@@ -782,6 +852,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     localStorage.removeItem(STORAGE_KEY_ROOMS);
     localStorage.removeItem(STORAGE_KEY_ASSETS);
     localStorage.removeItem(STORAGE_KEY_SYSTEM_AUDIT);
+    localStorage.removeItem(STORAGE_KEY_AUTH);
     showToast('Seluruh data helpdesk, shift schedule, meeting rooms, servers, dan laporan telah direset ke status awal.', 'info');
   };
 
@@ -792,6 +863,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   return (
     <AppContext.Provider
       value={{
+        isAuthenticated,
+        login,
+        logout,
         currentUser,
         setCurrentUser,
         teamMembers,

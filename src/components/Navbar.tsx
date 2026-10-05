@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { ChevronDown, Bell, Shield, Award } from 'lucide-react';
+import { ChevronDown, Bell, Shield, Award, LogOut } from 'lucide-react';
 
 interface NavbarProps {
   activeTab: 'calendar' | 'fleet' | 'audit';
@@ -15,6 +15,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
     openRemindersModal,
     openManageEngineersModal,
     missingReminders,
+    logout,
   } = useApp();
 
   const [showUserDropdown, setShowUserDropdown] = useState(false);
@@ -255,9 +256,34 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
                       </button>
                     </div>
                   )}
+
+                  {/* Sign Out / Logout Option */}
+                  <div className="pt-2 mt-1 border-t border-slate-100">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowUserDropdown(false);
+                        logout();
+                      }}
+                      className="w-full text-left px-3 py-1.5 text-xs font-semibold text-rose-600 hover:text-rose-800 hover:bg-rose-50 rounded-lg flex items-center gap-1.5 transition-colors"
+                    >
+                      <LogOut className="w-3.5 h-3.5" />
+                      <span>Keluar / Log Out Sesi</span>
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
+
+            {/* Quick Sign Out Action Button */}
+            <button
+              type="button"
+              onClick={logout}
+              title="Keluar dari sesi akun saat ini"
+              className="p-2 rounded-lg border border-slate-200 bg-slate-50 text-slate-500 hover:text-rose-600 hover:bg-rose-50 hover:border-rose-200 transition-colors flex items-center justify-center shadow-2xs"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
           </div>
         </div>
       </div>

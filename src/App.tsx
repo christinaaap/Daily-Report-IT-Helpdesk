@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { AppProvider, useApp } from './context/AppContext';
+import { LoginPage } from './components/LoginPage';
 import { Navbar } from './components/Navbar';
 import { CalendarDashboard } from './components/CalendarDashboard';
 import { InfrastructureFleetView } from './components/InfrastructureFleetView';
@@ -10,11 +11,11 @@ import { RosterScheduleModal } from './components/RosterScheduleModal';
 import { MissingReportsModal } from './components/MissingReportsModal';
 import { ManageEngineersModal } from './components/ManageEngineersModal';
 import { Toast } from './components/Toast';
-import { RotateCcw, Building2 } from 'lucide-react';
+import { RotateCcw } from 'lucide-react';
 
 const MainLayout: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'calendar' | 'fleet' | 'audit'>('calendar');
-  const { activeModal, selectedDate, resetAllData, currentUser } = useApp();
+  const { activeModal, selectedDate, resetAllData, currentUser, isAuthenticated } = useApp();
 
   const canAccessAudit = currentUser.role === 'ADMINISTRATOR' || currentUser.role === 'ICT_MANAGER';
 
@@ -24,6 +25,16 @@ const MainLayout: React.FC = () => {
       setActiveTab('calendar');
     }
   }, [activeTab, canAccessAudit]);
+
+  // If user is not authenticated, render the corporate login portal
+  if (!isAuthenticated) {
+    return (
+      <>
+        <LoginPage />
+        <Toast />
+      </>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans">
