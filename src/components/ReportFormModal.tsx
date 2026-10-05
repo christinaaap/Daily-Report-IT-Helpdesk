@@ -36,7 +36,14 @@ interface ReportFormModalProps {
 }
 
 export const ReportFormModal: React.FC<ReportFormModalProps> = ({ date }) => {
-  const { closeModal, submitDailyReport, currentUser, showToast } = useApp();
+  const {
+    closeModal,
+    submitDailyReport,
+    currentUser,
+    showToast,
+    servers: contextServers,
+    meetingRooms: contextMeetingRooms,
+  } = useApp();
 
   // Active form section tab
   const [activeSection, setActiveSection] = useState<'TICKETS' | 'SLA' | 'SERVERS' | 'LICENSES' | 'VTC' | 'SUMMARY'>('TICKETS');
@@ -60,9 +67,18 @@ export const ReportFormModal: React.FC<ReportFormModalProps> = ({ date }) => {
   });
 
   const [slaReminders, setSlaReminders] = useState<SLAReminderItem[]>(INITIAL_SLA_REMINDERS);
-  const [servers, setServers] = useState<ServerCheck[]>(INITIAL_SERVERS);
+  const [servers, setServers] = useState<ServerCheck[]>(() => contextServers);
   const [licenses, setLicenses] = useState<LicenseStatus>(INITIAL_LICENSES);
-  const [physicalInspections, setPhysicalInspections] = useState<PhysicalInspectionItem[]>(DEFAULT_PHYSICAL_ROOMS);
+  const [physicalInspections, setPhysicalInspections] = useState<PhysicalInspectionItem[]>(() =>
+    contextMeetingRooms.map(r => ({
+      ...r,
+      audioStatus: 'PASS',
+      videoStatus: 'PASS',
+      sharingCablesStatus: 'PASS',
+      photoEvidenceUrl: '',
+      completed: false,
+    }))
+  );
   
   const [executiveSummary, setExecutiveSummary] = useState(
     'Daily shift operations completed nominally. All VTC conference suites tested before 07:00 AM briefing. SCADA data diode firewall verified. Zero critical system downtime.'
@@ -166,7 +182,7 @@ export const ReportFormModal: React.FC<ReportFormModalProps> = ({ date }) => {
                   Daily Shift Report Entry: {date}
                 </h2>
                 <span className="text-[11px] font-mono px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 font-semibold border border-blue-200">
-                  Duty Engineer
+                  {currentUser.role === 'ADMINISTRATOR' ? 'Super Admin Mode' : 'Duty Engineer'}
                 </span>
               </div>
               <div className="text-xs text-slate-500 font-mono mt-0.5">
@@ -531,18 +547,28 @@ export const ReportFormModal: React.FC<ReportFormModalProps> = ({ date }) => {
           {activeSection === 'SERVERS' && (
             <div className="space-y-4">
               <div className="flex items-center justify-between text-xs text-slate-600">
-                <span className="font-semibold">Infrastructure Health Checklist (Luwuk Plant DC &amp; Jakarta Link)</span>
+                <span className="font-semibold">Infrastructure Health Checklist (Site Uso Plant DC &amp; HO Jkt Link)</span>
                 <span className="font-mono text-emerald-700 font-bold">
                   {servers.filter(s => s.status === 'ONLINE').length} / {servers.length} Operational
                 </span>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {servers.map(server => (
-                  <div
-                    key={server.id}
-                    className="p-4 rounded-xl border border-slate-200 bg-white shadow-2xs space-y-2.5"
-                  >
+                {servers.length === 0 ? (
+                  <div className="p-6 rounded-xl border border-dashed border-slate-300 bg-white text-center space-y-2 col-span-2">
+                    <p className="text-xs font-semibold text-slate-700">
+                      Belum ada Server yang terdaftar dalam sistem
+                    </p>
+                    <p className="text-[11px] text-slate-400 font-mono">
+                      Daftarkan server operasional perusahaan melalui tab "Infrastructure Fleet".
+                    </p>
+                  </div>
+                ) : (
+                  servers.map(server => (
+                    <div
+                      key={server.id}
+                      className="p-4 rounded-xl border border-slate-200 bg-white shadow-2xs space-y-2.5"
+                    >
                     <div className="flex items-start justify-between gap-2">
                       <div>
                         <div className="text-xs font-bold text-slate-900">{server.name}</div>
@@ -592,7 +618,8 @@ export const ReportFormModal: React.FC<ReportFormModalProps> = ({ date }) => {
                       <span className="font-mono text-slate-500 font-medium">{server.latencyMs}ms ping</span>
                     </div>
                   </div>
-                ))}
+                ))
+              )}
               </div>
             </div>
           )}
@@ -689,15 +716,26 @@ export const ReportFormModal: React.FC<ReportFormModalProps> = ({ date }) => {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {physicalInspections.map((room, index) => (
-                  <div
-                    key={room.id}
-                    className={`p-4 rounded-xl border bg-white shadow-2xs transition-all ${
-                      room.photoEvidenceUrl
-                        ? 'border-emerald-300 ring-1 ring-emerald-200'
-                        : 'border-amber-300 ring-1 ring-amber-200'
-                    }`}
-                  >
+                {physicalInspections.length === 0 ? (
+                  <div className="p-6 rounded-xl border border-dashed border-slate-300 bg-white text-center space-y-2 col-span-2">
+                    <Video className="w-8 h-8 text-slate-300 mx-auto" />
+                    <p className="text-xs font-semibold text-slate-700">
+                      Belum ada Ruang Meeting / VTC yang terdaftar dalam sistem
+                    </p>
+                    <p className="text-[11px] text-slate-400 font-mono">
+                      Daftarkan ruang meeting operasional perusahaan melalui tab "Infrastructure Fleet".
+                    </p>
+                  </div>
+                ) : (
+                  physicalInspections.map((room, index) => (
+                    <div
+                      key={room.id}
+                      className={`p-4 rounded-xl border bg-white shadow-2xs transition-all ${
+                        room.photoEvidenceUrl
+                          ? 'border-emerald-300 ring-1 ring-emerald-200'
+                          : 'border-amber-300 ring-1 ring-amber-200'
+                      }`}
+                    >
                     <div className="flex items-center justify-between pb-2 border-b border-slate-100">
                       <div>
                         <div className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
@@ -807,10 +845,11 @@ export const ReportFormModal: React.FC<ReportFormModalProps> = ({ date }) => {
                       }}
                     />
                   </div>
-                ))}
-              </div>
+                ))
+              )}
             </div>
-          )}
+          </div>
+        )}
 
           {/* TAB 6: EXECUTIVE SUMMARY & IMMUTABLE SUBMISSION */}
           {activeSection === 'SUMMARY' && (
@@ -892,7 +931,7 @@ export const ReportFormModal: React.FC<ReportFormModalProps> = ({ date }) => {
                     </strong>
                     Upon clicking Submit, this report will be permanently locked with a digital hash.
                     Neither you nor any other Helpdesk Engineer will be able to modify, delete, or overwrite it.
-                    Automated push notification will be sent to Superior Hendra Wijaya for formal review &amp; E-Signature.
+                    Automated push notification will be sent to Superior ICT Manager for formal review &amp; E-Signature.
                   </div>
                 </div>
               </div>

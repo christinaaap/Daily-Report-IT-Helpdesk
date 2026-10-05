@@ -1,4 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
+import { useApp } from '../context/AppContext';
 import { Eraser, PenTool, CheckCircle2, ShieldCheck, KeyRound } from 'lucide-react';
 
 interface DigitalSignaturePadProps {
@@ -9,6 +10,7 @@ interface DigitalSignaturePadProps {
 export const DigitalSignaturePad: React.FC<DigitalSignaturePadProps> = ({
   onSignatureChange,
 }) => {
+  const { currentUser } = useApp();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [hasDrawn, setHasDrawn] = useState(false);
@@ -282,7 +284,7 @@ export const DigitalSignaturePad: React.FC<DigitalSignaturePadProps> = ({
           {pinVerified && (
             <div className="flex items-center gap-2 text-xs text-emerald-800 bg-emerald-50 border border-emerald-200 p-2.5 rounded-lg font-medium">
               <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
-              <span>Identity authenticated as Hendra Wijaya (ICT Operations Manager). Ready for submission.</span>
+              <span>Identity authenticated as {currentUser.name} ({currentUser.role === 'ADMINISTRATOR' ? 'Administrator IT' : 'ICT Operations Manager'}). Ready for submission.</span>
             </div>
           )}
         </div>

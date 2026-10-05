@@ -26,7 +26,7 @@ interface ReportDetailModalProps {
 }
 
 export const ReportDetailModal: React.FC<ReportDetailModalProps> = ({ reportId }) => {
-  const { reports, closeModal, currentUser, reviewDailyReport, showToast } = useApp();
+  const { reports, closeModal, currentUser, teamMembers, reviewDailyReport, showToast } = useApp();
 
   const report = reports.find(r => r.id === reportId);
 
@@ -55,7 +55,7 @@ export const ReportDetailModal: React.FC<ReportDetailModalProps> = ({ reportId }
     );
   }
 
-  const isSuperior = currentUser.role === 'ICT_MANAGER';
+  const isSuperior = currentUser.role === 'ICT_MANAGER' || currentUser.role === 'ADMINISTRATOR';
   const isPendingSuperiorReview = report.status === 'SUBMITTED';
 
   const handleSuperiorAction = (e: React.FormEvent) => {
@@ -617,7 +617,7 @@ export const ReportDetailModal: React.FC<ReportDetailModalProps> = ({ reportId }
                 </div>
                 {!isSuperior && (
                   <span className="text-[11px] font-mono px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 font-medium border border-amber-200">
-                    Switch to Superior Hendra Wijaya in Top Bar to Sign
+                    Switch to {teamMembers.find(m => m.role === 'ICT_MANAGER')?.name ? `Superior ${teamMembers.find(m => m.role === 'ICT_MANAGER')?.name}` : 'Superior / ICT Manager'} in Top Bar to Sign
                   </span>
                 )}
               </div>
@@ -702,7 +702,7 @@ export const ReportDetailModal: React.FC<ReportDetailModalProps> = ({ reportId }
                 </form>
               ) : (
                 <div className="p-3.5 rounded-lg bg-white border border-slate-200 text-xs text-slate-600 flex items-center justify-between">
-                  <span>Currently logged in as Helpdesk Engineer ({currentUser.name}). E-Signature sign-off is restricted to ICT Manager Hendra Wijaya.</span>
+                  <span>Currently logged in as Helpdesk Engineer ({currentUser.name}). E-Signature sign-off is restricted to Superior / ICT Manager or IT Administrator.</span>
                 </div>
               )}
             </div>

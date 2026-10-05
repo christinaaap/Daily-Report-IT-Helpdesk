@@ -1,13 +1,36 @@
-export type Location = 'Site Luwuk' | 'HO Jakarta';
+export type Location = 'Site Uso' | 'HO Jkt';
 
-export type UserRole = 'DUTY_ENGINEER' | 'HELPDESK_ENGINEER' | 'ICT_MANAGER';
+export type UserRole = 'DUTY_ENGINEER' | 'HELPDESK_ENGINEER' | 'ICT_MANAGER' | 'ADMINISTRATOR';
 
-export type ShiftType =
-  | 'Site Early (06:00 - 18:00)'
-  | 'Site Sunday Duty (07:00 - 18:00)'
-  | 'Site Regular (07:00 - 18:00)'
-  | 'HO Shift A (07:00 - 17:00)'
-  | 'HO Shift B (08:00 - 17:00)';
+export type SiteUsoShift =
+  | 'Shift A (06.00 - 18.00 WITA)'
+  | 'Shift B (07.00 - 18.00 WITA)'
+  | 'Off / Libur';
+
+export type HOJktShift =
+  | 'Shift A (07.00 - 17.00 WIB)'
+  | 'Shift B (08.00 - 17.00 WIB)'
+  | 'Off / Libur';
+
+export type ShiftType = SiteUsoShift | HOJktShift | string;
+
+export interface ManualShiftItem {
+  engineerId: string;
+  engineerName: string;
+  badgeNumber: string;
+  location: Location;
+  shiftTime: string;
+  isDutyEngineer: boolean;
+  notes?: string;
+}
+
+export interface DayShiftSchedule {
+  date: string; // YYYY-MM-DD
+  siteUsoDutyEngineerId: string;
+  shifts: Record<string, ManualShiftItem>; // engineerId -> ManualShiftItem
+  updatedBy?: string;
+  updatedAt?: string;
+}
 
 export interface TeamMember {
   id: string;
@@ -88,6 +111,18 @@ export interface PhysicalInspectionItem {
   photoTimestamp?: string;
   notes: string;
   completed: boolean;
+  facilities?: string;
+}
+
+export interface CompanyAsset {
+  id: string;
+  name: string;
+  category: 'SOFTWARE_LICENSE' | 'NETWORK_HARDWARE' | 'TELEPHONY' | 'SCADA' | 'OTHER';
+  capacityTotal: number;
+  capacityUsed: number;
+  unit: string;
+  vendor?: string;
+  notes?: string;
 }
 
 export interface AuditLogEntry {
@@ -153,3 +188,16 @@ export interface ShiftRosterSchedule {
   isOverridden?: boolean;
   overrideReason?: string;
 }
+
+export interface MissingReportReminder {
+  date: string;
+  assignedDutyEngineerId: string;
+  assignedDutyEngineerName: string;
+  assignedDutyEngineerEmail: string;
+  location: Location;
+  shift: string;
+  daysOverdue: number;
+  status: 'PENDING_SUBMISSION' | 'REMINDER_DISPATCHED';
+  dispatchedAt?: string;
+}
+

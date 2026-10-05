@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { getRosterForDate } from '../utils/rosterLogic';
-import { TEAM_MEMBERS } from '../data/mockData';
 import {
   ChevronLeft,
   ChevronRight,
@@ -10,10 +9,13 @@ import {
   XCircle,
   Plus,
   Lock,
-  Camera,
   Calendar as CalendarIcon,
   Building2,
-  AlertCircle,
+  Bell,
+  AlertTriangle,
+  Send,
+  Shield,
+  ShieldCheck,
 } from 'lucide-react';
 import { ReportStatus } from '../types';
 
@@ -25,8 +27,14 @@ export const CalendarDashboard: React.FC = () => {
     openCreateModal,
     openViewModal,
     openRosterModal,
+    openRemindersModal,
+    openManageEngineersModal,
+    missingReminders,
+    dispatchReminder,
     currentUser,
+    teamMembers,
     dutyOverrideId,
+    manualSchedules,
     isCurrentEligibleForDate,
   } = useApp();
 
@@ -73,11 +81,90 @@ export const CalendarDashboard: React.FC = () => {
   const totalApproved = reports.filter(r => r.status === 'APPROVED').length;
   const totalSubmitted = reports.filter(r => r.status === 'SUBMITTED').length;
   const totalRejected = reports.filter(r => r.status === 'REJECTED').length;
-  const currentWeekRoster = getRosterForDate(selectedDate, dutyOverrideId);
-  const scheduledDutyUser = TEAM_MEMBERS.find(m => m.id === currentWeekRoster.siteDutyEngineerId);
+  const currentWeekRoster = getRosterForDate(selectedDate, manualSchedules, dutyOverrideId, teamMembers);
+  const scheduledDutyUser = teamMembers.find(m => m.id === currentWeekRoster.siteDutyEngineerId);
+
+  const isAdmin = currentUser.role === 'ADMINISTRATOR';
 
   return (
     <div className="space-y-6">
+      {/* Administrator Full Access Alert Bar (if logged in as Super Admin) */}
+      {isAdmin && (
+        <div className="rounded-xl border border-purple-300 bg-purple-50 p-4 shadow-xs flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-purple-100 text-purple-800">
+              <Shield className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold uppercase tracking-wider text-purple-900">
+                  Mode Administrator IT Aktif (Akses Keseluruhan)
+                </span>
+                <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-purple-200 text-purple-900">
+                  Super Admin
+                </span>
+              </div>
+              <p className="text-xs text-purple-800 mt-0.5">
+                Anda memiliki izin penuh untuk membuat/mengubah laporan tanggal apa pun tanpa batas roster, menyetujui laporan harian, serta mengatur jadwal duty shift.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={openRosterModal}
+            className="px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-purple-700 hover:bg-purple-800 text-white shrink-0 shadow-xs"
+          >
+            Kelola Roster
+          </button>
+        </div>
+      )}
+
+      {/* Automated Reminder Notification Banner (PRD & User Request) */}
+      {missingReminders.length > 0 && (
+        <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4 animate-in fade-in slide-in-from-top-2">
+          <div className="flex items-start gap-3">
+            <div className="p-2 rounded-lg bg-amber-200 text-amber-900 shrink-0">
+              <Bell className="w-5 h-5 text-amber-800 animate-bounce" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-amber-900">
+                  Peringatan: Terdapat {missingReminders.length} Hari Laporan Belum Diisi
+                </h3>
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 font-bold border border-rose-200">
+                  Perlu Tindakan
+                </span>
+              </div>
+              <p className="text-xs text-amber-800 mt-1 max-w-2xl leading-relaxed">
+                Tanggal <strong className="font-semibold">{missingReminders.map(m => m.date).join(', ')}</strong> belum memiliki laporan terdaftar. Petugas yang dijadwalkan:{' '}
+                <strong className="font-semibold text-slate-900">
+                  {missingReminders[0]?.assignedDutyEngineerName}
+                </strong>{' '}
+                ({missingReminders[0]?.assignedDutyEngineerEmail}).
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={() => dispatchReminder(missingReminders[0].date)}
+              className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-amber-200 hover:bg-amber-300 text-amber-950 border border-amber-400 transition-colors flex items-center gap-1.5 shadow-2xs"
+            >
+              <Send className="w-3.5 h-3.5" />
+              Kirim Reminder ke Helpdesk
+            </button>
+            <button
+              type="button"
+              onClick={openRemindersModal}
+              className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 transition-colors shadow-2xs"
+            >
+              Lihat Rincian ({missingReminders.length})
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Top Banner: Shift Accountability & Role Status */}
       <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-start gap-3.5">
@@ -87,7 +174,7 @@ export const CalendarDashboard: React.FC = () => {
           <div>
             <div className="flex items-center gap-2 flex-wrap">
               <h2 className="text-base font-bold text-slate-900">
-                Site Luwuk &amp; HO Jakarta Shift Roster
+                Site Uso &amp; HO Jkt Shift Roster
               </h2>
               <span className="text-xs font-mono px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-800 border border-blue-200 font-medium">
                 Cycle: Week 40, Oct 2026
@@ -95,8 +182,8 @@ export const CalendarDashboard: React.FC = () => {
             </div>
             <p className="text-xs text-slate-600 mt-1 max-w-2xl leading-relaxed">
               Standard operating procedure: Mandatory Duty Engineer for this cycle is{' '}
-              <strong className="text-slate-900 font-semibold">{scheduledDutyUser?.name}</strong> (Site Early Shift: 06:00 - 18:00).
-              Only the assigned early-shift duty engineer has authorization to submit the locked daily operational report.
+              <strong className="text-slate-900 font-semibold">{scheduledDutyUser?.name}</strong> (Site Uso Shift A: 06.00 - 18.00 WITA).
+              Only the assigned duty engineer (or Administrator) has authorization to submit the locked daily operational report.
             </p>
           </div>
         </div>
@@ -165,14 +252,14 @@ export const CalendarDashboard: React.FC = () => {
 
         <div className="p-4 rounded-xl border border-slate-200 bg-white shadow-xs">
           <div className="flex items-center justify-between text-xs text-slate-500 font-medium">
-            <span>Physical VTC Compliance</span>
-            <Camera className="w-4 h-4 text-blue-600" />
+            <span>Hari Belum Diisi</span>
+            <Bell className="w-4 h-4 text-amber-600" />
           </div>
-          <div className="mt-2 text-2xl font-bold font-mono text-blue-700 tabular-nums">
-            100%
+          <div className="mt-2 text-2xl font-bold font-mono text-amber-700 tabular-nums">
+            {missingReminders.length}
           </div>
           <div className="mt-1 text-[11px] text-slate-500 font-mono">
-            Mandatory photo evidence verified
+            {missingReminders.length > 0 ? 'Reminder aktif' : 'Semua terisi'}
           </div>
         </div>
       </div>
@@ -215,15 +302,15 @@ export const CalendarDashboard: React.FC = () => {
               <span className="text-slate-600">Gray: Pending</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 rounded-full bg-amber-500 inline-block" />
+              <span className="w-2.5 h-2.5 rounded-full bg-amber-500 inline-block shadow-2xs" />
               <span className="text-amber-800 font-medium">Yellow: Awaiting Review</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block" />
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block shadow-2xs" />
               <span className="text-emerald-800 font-medium">Green: Approved</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 rounded-full bg-rose-500 inline-block" />
+              <span className="w-2.5 h-2.5 rounded-full bg-rose-500 inline-block shadow-2xs" />
               <span className="text-rose-800 font-medium">Red: Rejected</span>
             </div>
           </div>
@@ -259,6 +346,8 @@ export const CalendarDashboard: React.FC = () => {
             const isToday = dateStr === selectedDate;
             const isSunday = new Date(currentYear, currentMonth, dayNum).getDay() === 0;
 
+            const isMissingDay = missingReminders.some(m => m.date === dateStr);
+
             const eligibility = isCurrentEligibleForDate(dateStr);
 
             // Determine status color indicator for corporate look
@@ -280,6 +369,11 @@ export const CalendarDashboard: React.FC = () => {
                 indicatorBg = 'bg-rose-500';
                 indicatorText = 'Rejected / Needs Revision';
               }
+            } else if (isMissingDay) {
+              // Highlight day that needs report and has an active reminder
+              statusColor = 'border-amber-300 bg-amber-50/40 text-amber-950 hover:border-amber-400 ring-1 ring-amber-200';
+              indicatorBg = 'bg-amber-400 animate-ping';
+              indicatorText = 'Missing / Belum Diisi (Reminder Aktif)';
             }
 
             return (
@@ -290,6 +384,9 @@ export const CalendarDashboard: React.FC = () => {
                     openViewModal(report.id);
                   } else if (eligibility.isEligible) {
                     openCreateModal(dateStr);
+                  } else if (isMissingDay) {
+                    // Open reminder details
+                    openRemindersModal();
                   } else {
                     setSelectedDate(dateStr);
                   }
@@ -348,6 +445,16 @@ export const CalendarDashboard: React.FC = () => {
                         </span>
                       </div>
                     </div>
+                  ) : isMissingDay ? (
+                    <div className="space-y-0.5">
+                      <div className="text-[10px] text-amber-800 font-bold flex items-center gap-1">
+                        <AlertTriangle className="w-3 h-3 text-amber-600 shrink-0" />
+                        <span>Belum Diisi</span>
+                      </div>
+                      <div className="text-[9px] text-slate-500 font-mono truncate">
+                        Duty: {getRosterForDate(dateStr, manualSchedules, dutyOverrideId, teamMembers).siteDutyEngineerId ? teamMembers.find(m => m.id === getRosterForDate(dateStr, manualSchedules, dutyOverrideId, teamMembers).siteDutyEngineerId)?.name.split(' ')[0] : 'Belum Ada'}
+                      </div>
+                    </div>
                   ) : (
                     <div className="text-[10px] text-slate-400 font-medium flex items-center gap-1">
                       <span className="w-2 h-2 rounded-full bg-slate-300 shrink-0" />
@@ -365,6 +472,10 @@ export const CalendarDashboard: React.FC = () => {
                   ) : eligibility.isEligible ? (
                     <span className="text-blue-700 font-semibold group-hover:underline flex items-center gap-0.5">
                       <Plus className="w-3 h-3" /> Create
+                    </span>
+                  ) : isMissingDay ? (
+                    <span className="text-amber-700 font-semibold flex items-center gap-0.5">
+                      <Bell className="w-2.5 h-2.5" /> Reminder
                     </span>
                   ) : (
                     <span className="text-slate-400 flex items-center gap-0.5">

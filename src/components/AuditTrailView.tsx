@@ -1,10 +1,29 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { History, Search, ArrowUpRight } from 'lucide-react';
+import { History, Search, ArrowUpRight, ShieldAlert } from 'lucide-react';
 
 export const AuditTrailView: React.FC = () => {
-  const { reports, openViewModal } = useApp();
+  const { reports, openViewModal, currentUser } = useApp();
   const [searchTerm, setSearchTerm] = useState('');
+
+  const isAuthorized = currentUser.role === 'ADMINISTRATOR' || currentUser.role === 'ICT_MANAGER';
+
+  if (!isAuthorized) {
+    return (
+      <div className="p-8 rounded-2xl bg-white border border-slate-200 shadow-sm text-center max-w-lg mx-auto my-12 space-y-4">
+        <div className="w-12 h-12 rounded-full bg-rose-100 text-rose-700 flex items-center justify-center mx-auto">
+          <ShieldAlert className="w-6 h-6" />
+        </div>
+        <div>
+          <h2 className="text-base font-bold text-slate-900">Akses Terbatas: Khusus Superior &amp; Administrator</h2>
+          <p className="text-xs text-slate-600 mt-2 leading-relaxed">
+            Halaman Audit Trail hanya dapat diakses oleh Pejabat <strong>Superior / ICT Manager</strong> dan <strong>Administrator IT</strong>.
+            Akun Helpdesk Engineer ({currentUser.name}) tidak memiliki otorisasi untuk mengakses rekaman jejak audit ISO 27001.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   // Collect all audit logs from all reports
   const allAuditEntries = reports.flatMap(report =>

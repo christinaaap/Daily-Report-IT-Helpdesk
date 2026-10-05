@@ -1,100 +1,153 @@
-import { TeamMember, ShiftRosterSchedule, ShiftType } from '../types';
+import {
+  TeamMember,
+  ShiftRosterSchedule,
+  ShiftType,
+  MissingReportReminder,
+  DailyReport,
+  DayShiftSchedule,
+  ManualShiftItem,
+} from '../types';
 import { TEAM_MEMBERS } from '../data/mockData';
 
+export const SITE_USO_SHIFT_OPTIONS = [
+  'Shift A (06.00 - 18.00 WITA)',
+  'Shift B (07.00 - 18.00 WITA)',
+] as const;
+
+export const HO_JKT_SHIFT_OPTIONS = [
+  'Shift A (07.00 - 17.00 WIB)',
+  'Shift B (08.00 - 17.00 WIB)',
+] as const;
+
 /**
- * Calculates the weekly duty cycle for Site Luwuk engineers.
- * The 4 Site Luwuk engineers rotate weekly:
- * 1 engineer works Sunday (07:00-18:00) + Monday-Saturday early shift (06:00-18:00)
- * -> This engineer is the designated Duty Engineer for that entire cycle.
- * The other 3 engineers work Monday-Friday (07:00-18:00).
- *
- * For HO Jakarta:
- * Eng A: Mon-Fri 07:00-17:00
- * Eng B: Mon-Fri 08:00-17:00
+ * Creates a clean, empty shift assignment for a given date without any dummy data.
  */
+export function createEmptyDaySchedule(dateStr: string, teamMembers: TeamMember[] = TEAM_MEMBERS): DayShiftSchedule {
+  const shifts: Record<string, ManualShiftItem> = {};
 
-export function getRosterForDate(dateStr: string, dutyOverrideId?: string | null): ShiftRosterSchedule {
-  const targetDate = new Date(dateStr);
-  const dayOfWeek = targetDate.getDay(); // 0 is Sunday, 6 is Saturday
+  // Site Uso Helpdesk Engineers
+  const siteEngineers = teamMembers.filter(m => m.location === 'Site Uso' && m.role === 'HELPDESK_ENGINEER');
+  siteEngineers.forEach(eng => {
+    shifts[eng.id] = {
+      engineerId: eng.id,
+      engineerName: eng.name,
+      badgeNumber: eng.badgeNumber,
+      location: 'Site Uso',
+      shiftTime: '', // Clean: unassigned until selected by Administrator
+      isDutyEngineer: false,
+      notes: '',
+    };
+  });
 
-  // Calculate week index relative to epoch
-  const epoch = new Date('2026-09-01').getTime();
-  const diffDays = Math.floor((targetDate.getTime() - epoch) / (1000 * 60 * 60 * 24));
-  const weekIndex = Math.floor(diffDays / 7);
+  // HO Jkt Helpdesk Engineers
+  const hoEngineers = teamMembers.filter(m => m.location === 'HO Jkt' && m.role === 'HELPDESK_ENGINEER');
+  hoEngineers.forEach(eng => {
+    shifts[eng.id] = {
+      engineerId: eng.id,
+      engineerName: eng.name,
+      badgeNumber: eng.badgeNumber,
+      location: 'HO Jkt',
+      shiftTime: '', // Clean: unassigned until selected by Administrator
+      isDutyEngineer: false,
+      notes: '',
+    };
+  });
 
-  const siteEngineers = TEAM_MEMBERS.filter(m => m.location === 'Site Luwuk');
-  
-  // Rotate primary duty index among the 4 site engineers
-  const dutyIndex = Math.abs(weekIndex) % siteEngineers.length;
-  const scheduledDutyEngineer = siteEngineers[dutyIndex];
+  return {
+    date: dateStr,
+    siteUsoDutyEngineerId: '',
+    shifts,
+    updatedBy: '',
+    updatedAt: '',
+  };
+}
 
-  // Active duty engineer may be overridden by ICT Manager
-  const activeDutyEngineerId = dutyOverrideId || scheduledDutyEngineer.id;
+/**
+ * Returns the effective roster for a given date based on Administrator configuration.
+ */
+export function getRosterForDate(
+  dateStr: string,
+  manualSchedules?: Record<string, DayShiftSchedule>,
+  dutyOverrideId?: string | null,
+  teamMembers: TeamMember[] = TEAM_MEMBERS
+): ShiftRosterSchedule {
+  const daySchedule =
+    manualSchedules && manualSchedules[dateStr]
+      ? manualSchedules[dateStr]
+      : createEmptyDaySchedule(dateStr, teamMembers);
+
+  const siteEngineers = teamMembers.filter(m => m.location === 'Site Uso' && m.role === 'HELPDESK_ENGINEER');
+  const hoEngineers = teamMembers.filter(m => m.location === 'HO Jkt' && m.role === 'HELPDESK_ENGINEER');
+
+  const effectiveDutyEngineerId =
+    dutyOverrideId || daySchedule.siteUsoDutyEngineerId || (daySchedule.updatedAt ? siteEngineers[0]?.id : (siteEngineers[0]?.id || 'admin-it-01'));
 
   const siteRoster = siteEngineers.map(eng => {
-    const isDuty = eng.id === activeDutyEngineerId;
-    let shift: ShiftType;
-    if (dayOfWeek === 0) {
-      // Sunday
-      shift = isDuty ? 'Site Sunday Duty (07:00 - 18:00)' : 'Site Regular (07:00 - 18:00)';
-    } else {
-      // Mon - Sat
-      shift = isDuty ? 'Site Early (06:00 - 18:00)' : 'Site Regular (07:00 - 18:00)';
-    }
+    const shiftItem = daySchedule.shifts[eng.id];
+    const isDuty = eng.id === effectiveDutyEngineerId;
+    const shiftTime = shiftItem?.shiftTime || '';
 
     return {
       engineerId: eng.id,
-      shift,
+      shift: shiftTime as ShiftType,
       isDutyLeader: isDuty,
     };
   });
 
-  const hoEngineers = TEAM_MEMBERS.filter(m => m.location === 'HO Jakarta').map((eng, idx) => ({
-    engineerId: eng.id,
-    shift: (idx === 0 ? 'HO Shift A (07:00 - 17:00)' : 'HO Shift B (08:00 - 17:00)') as ShiftType,
-  }));
+  const hoRoster = hoEngineers.map(eng => {
+    const shiftItem = daySchedule.shifts[eng.id];
+    const shiftTime = shiftItem?.shiftTime || '';
+    return {
+      engineerId: eng.id,
+      shift: shiftTime as ShiftType,
+    };
+  });
 
   return {
     date: dateStr,
-    siteDutyEngineerId: activeDutyEngineerId,
+    siteDutyEngineerId: effectiveDutyEngineerId,
     siteEngineers: siteRoster,
-    hoEngineers,
-    isOverridden: !!dutyOverrideId && dutyOverrideId !== scheduledDutyEngineer.id,
-    overrideReason: dutyOverrideId ? 'Designated shift adjustment by ICT Operations Manager' : undefined,
+    hoEngineers: hoRoster,
+    isOverridden: !!dutyOverrideId && dutyOverrideId !== daySchedule.siteUsoDutyEngineerId,
+    overrideReason: dutyOverrideId ? 'Penyesuaian penugasan shift oleh Administrator / ICT Manager' : undefined,
   };
 }
 
 /**
  * Checks if a specific user is eligible to create/submit report for the specified date
  */
-export function isUserEligibleToReport(user: TeamMember, dateStr: string, dutyOverrideId?: string | null): {
+export function isUserEligibleToReport(
+  user: TeamMember,
+  dateStr: string,
+  manualSchedules?: Record<string, DayShiftSchedule>,
+  dutyOverrideId?: string | null,
+  teamMembers: TeamMember[] = TEAM_MEMBERS
+): {
   isEligible: boolean;
   reason: string;
 } {
-  const roster = getRosterForDate(dateStr, dutyOverrideId);
-  const targetDate = new Date(dateStr);
-  const dayOfWeek = targetDate.getDay();
-
-  // If Sunday and non-duty engineer
-  if (dayOfWeek === 0 && user.id !== roster.siteDutyEngineerId) {
+  // Administrator has full super-access to any date
+  if (user.role === 'ADMINISTRATOR') {
     return {
-      isEligible: false,
-      reason: 'Site Luwuk Sunday operations are exclusively handled by the Duty Engineer.',
+      isEligible: true,
+      reason: 'Administrator Super-Access: Hak akses penuh untuk membuat, memodifikasi, dan mengelola laporan di seluruh tanggal dan lokasi.',
     };
   }
 
-  // HO Jakarta engineers do not create the Site Daily Report
-  if (user.location === 'HO Jakarta' && user.role !== 'ICT_MANAGER') {
+  const roster = getRosterForDate(dateStr, manualSchedules, dutyOverrideId, teamMembers);
+
+  // HO Jkt engineers operate standard office shifts
+  if (user.location === 'HO Jkt' && user.role !== 'ICT_MANAGER') {
     return {
       isEligible: false,
-      reason: 'HO Jakarta engineers operate on standard office shifts. Daily Report generation is strictly assigned to the Site Luwuk Early Shift Duty Engineer.',
+      reason: 'Engineer HO Jkt bertugas di HO Jkt. Pengisian Daily Report ditugaskan kepada Petugas Duty Site Uso (Shift A: 06.00 - 18.00 WITA).',
     };
   }
 
   if (user.role === 'ICT_MANAGER') {
     return {
       isEligible: false,
-      reason: 'ICT Managers have review and approval authority. Operational daily reports must be initiated by the designated Helpdesk Duty Engineer.',
+      reason: 'ICT Manager memiliki wewenang review dan persetujuan. Laporan operasional harian diisi oleh Petugas Duty Site Uso atau Administrator.',
     };
   }
 
@@ -102,14 +155,15 @@ export function isUserEligibleToReport(user: TeamMember, dateStr: string, dutyOv
   if (user.id === roster.siteDutyEngineerId) {
     return {
       isEligible: true,
-      reason: 'Eligible: Assigned Duty Engineer for early shift cycle (06:00 - 18:00).',
+      reason: 'Memenuhi Syarat: Petugas Duty terdaftar untuk Shift A (06.00 - 18.00 WITA) di Site Uso.',
     };
   }
 
-  const assignedLeader = TEAM_MEMBERS.find(m => m.id === roster.siteDutyEngineerId)?.name || 'Designated Duty Engineer';
+  const assignedLeader =
+    teamMembers.find(m => m.id === roster.siteDutyEngineerId)?.name || 'Petugas Duty Terdaftar';
   return {
     isEligible: false,
-    reason: `Locked by Roster Policy. Today's reporting responsibility is strictly assigned to ${assignedLeader} (Early Shift: 06:00 - 18:00).`,
+    reason: `Terkunci oleh Jadwal Shift. Tanggung jawab pelaporan hari ini ditugaskan kepada ${assignedLeader} (Site Uso Shift A: 06.00 - 18.00 WITA).`,
   };
 }
 
@@ -126,4 +180,56 @@ export function generateImmutableHash(reportId: string, dutyEngineerId: string, 
   }
   const hex = Math.abs(hash).toString(16).padStart(8, '0');
   return `dslng_${hex}_${Date.now().toString(16)}a94f8e21bc89`;
+}
+
+/**
+ * Detects missing daily reports from the beginning of the current month up to the current date.
+ * If any day does not have a report submitted or approved, it generates a reminder for the designated Helpdesk Engineer.
+ */
+export function detectMissingReportDays(
+  reports: DailyReport[],
+  currentDateStr: string,
+  manualSchedules?: Record<string, DayShiftSchedule>,
+  dutyOverrideId?: string | null,
+  teamMembers: TeamMember[] = TEAM_MEMBERS
+): MissingReportReminder[] {
+  const currentDate = new Date(currentDateStr);
+  const currentYear = currentDate.getFullYear();
+  const currentMonth = currentDate.getMonth();
+  const currentDay = currentDate.getDate();
+
+  const missingReminders: MissingReportReminder[] = [];
+
+  // Check each day of the month up to current date
+  for (let d = 1; d <= currentDay; d++) {
+    const monthPadded = String(currentMonth + 1).padStart(2, '0');
+    const dayPadded = String(d).padStart(2, '0');
+    const dateStr = `${currentYear}-${monthPadded}-${dayPadded}`;
+
+    // Check if report exists
+    const hasReport = reports.some(r => r.reportDate === dateStr);
+    if (!hasReport) {
+      const roster = getRosterForDate(dateStr, manualSchedules, dutyOverrideId, teamMembers);
+      const assignedEngineer = teamMembers.find(m => m.id === roster.siteDutyEngineerId);
+
+      const dayDate = new Date(dateStr);
+      const diffTime = currentDate.getTime() - dayDate.getTime();
+      const daysOverdue = Math.max(0, Math.floor(diffTime / (1000 * 60 * 60 * 24)));
+
+      if (assignedEngineer) {
+        missingReminders.push({
+          date: dateStr,
+          assignedDutyEngineerId: assignedEngineer.id,
+          assignedDutyEngineerName: assignedEngineer.name,
+          assignedDutyEngineerEmail: assignedEngineer.email,
+          location: assignedEngineer.location,
+          shift: assignedEngineer.shift,
+          daysOverdue,
+          status: 'PENDING_SUBMISSION',
+        });
+      }
+    }
+  }
+
+  return missingReminders;
 }

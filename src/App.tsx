@@ -7,12 +7,23 @@ import { AuditTrailView } from './components/AuditTrailView';
 import { ReportFormModal } from './components/ReportFormModal';
 import { ReportDetailModal } from './components/ReportDetailModal';
 import { RosterScheduleModal } from './components/RosterScheduleModal';
+import { MissingReportsModal } from './components/MissingReportsModal';
+import { ManageEngineersModal } from './components/ManageEngineersModal';
 import { Toast } from './components/Toast';
 import { RotateCcw, Building2 } from 'lucide-react';
 
 const MainLayout: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'calendar' | 'roster' | 'fleet' | 'audit'>('calendar');
-  const { activeModal, selectedDate, resetAllData } = useApp();
+  const [activeTab, setActiveTab] = useState<'calendar' | 'fleet' | 'audit'>('calendar');
+  const { activeModal, selectedDate, resetAllData, currentUser } = useApp();
+
+  const canAccessAudit = currentUser.role === 'ADMINISTRATOR' || currentUser.role === 'ICT_MANAGER';
+
+  // Role guard: if activeTab is audit and current user is not authorized, redirect to calendar
+  React.useEffect(() => {
+    if (activeTab === 'audit' && !canAccessAudit) {
+      setActiveTab('calendar');
+    }
+  }, [activeTab, canAccessAudit]);
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans">
@@ -23,8 +34,7 @@ const MainLayout: React.FC = () => {
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
         {activeTab === 'calendar' && <CalendarDashboard />}
         {activeTab === 'fleet' && <InfrastructureFleetView />}
-        {activeTab === 'audit' && <AuditTrailView />}
-        {activeTab === 'roster' && <CalendarDashboard />}
+        {activeTab === 'audit' && (canAccessAudit ? <AuditTrailView /> : <CalendarDashboard />)}
       </main>
 
       {/* Corporate Operations Footer */}
@@ -48,7 +58,7 @@ const MainLayout: React.FC = () => {
               <RotateCcw className="w-3 h-3" />
               Reset Demo Baseline
             </button>
-            <span>Site Luwuk (WITA) / HO Jakarta (WIB)</span>
+            <span>Site Uso (WITA) / HO Jkt (WIB)</span>
           </div>
         </div>
       </footer>
@@ -63,6 +73,10 @@ const MainLayout: React.FC = () => {
       )}
 
       {activeModal?.type === 'ROSTER' && <RosterScheduleModal />}
+
+      {activeModal?.type === 'REMINDERS' && <MissingReportsModal />}
+
+      {activeModal?.type === 'MANAGE_ENGINEERS' && <ManageEngineersModal />}
 
       {/* Notification Toast */}
       <Toast />
