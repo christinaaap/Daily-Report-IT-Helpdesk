@@ -62,6 +62,7 @@ interface AppContextType {
   }) => void;
   updateTeamMember: (member: TeamMember) => void;
   deleteTeamMember: (id: string) => void;
+  adminResetPassword: (userId: string, newPassword: string) => void;
 
   // Fleet Infrastructure & Facilities Management
   servers: ServerCheck[];
@@ -80,8 +81,12 @@ interface AppContextType {
   deleteCompanyAsset: (id: string) => void;
 
   reports: DailyReport[];
+  todayDate: string;
+  realtimeWITA: string;
+  realtimeWIB: string;
   selectedDate: string;
   setSelectedDate: (date: string) => void;
+  resetToToday: () => void;
   dutyOverrideId: string | null;
   setDutyOverrideId: (id: string | null) => void;
   overrideReason: string;
@@ -138,17 +143,54 @@ interface AppContextType {
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
-const STORAGE_KEY_REPORTS = 'dslng_it_daily_reports_v5';
+const STORAGE_KEY_REPORTS = 'dslng_it_daily_reports_v6';
 const STORAGE_KEY_OVERRIDE = 'dslng_it_roster_override_v3';
 const STORAGE_KEY_USER = 'dslng_it_active_user_v3';
 const STORAGE_KEY_REMINDERS = 'dslng_it_reminders_dispatched_v3';
 const STORAGE_KEY_MANUAL_SCHEDULES = 'dslng_it_schedules_clean_v4';
-const STORAGE_KEY_TEAM_MEMBERS = 'dslng_it_team_members_v8';
+const STORAGE_KEY_TEAM_MEMBERS = 'dslng_it_team_members_v9';
 const STORAGE_KEY_SERVERS = 'dslng_it_servers_clean_v5';
 const STORAGE_KEY_ROOMS = 'dslng_it_rooms_clean_v5';
 const STORAGE_KEY_ASSETS = 'dslng_it_assets_clean_v5';
 const STORAGE_KEY_SYSTEM_AUDIT = 'dslng_it_system_audit_clean_v2';
 const STORAGE_KEY_AUTH = 'dslng_it_auth_status_v1';
+
+// Real-time Date and Clock Helpers (Site Uso WITA - Asia/Makassar UTC+8 & HO Jakarta WIB UTC+7)
+export const getRealtimeDateString = (): string => {
+  const now = new Date();
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Makassar',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(now);
+};
+
+export const getRealtimeClockWITA = (): string => {
+  const now = new Date();
+  return (
+    new Intl.DateTimeFormat('id-ID', {
+      timeZone: 'Asia/Makassar',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false,
+    }).format(now) + ' WITA'
+  );
+};
+
+export const getRealtimeClockWIB = (): string => {
+  const now = new Date();
+  return (
+    new Intl.DateTimeFormat('id-ID', {
+      timeZone: 'Asia/Jakarta',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false,
+    }).format(now) + ' WIB'
+  );
+};
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   // Session Authentication State (Initializes to false to present the corporate Login Portal)
@@ -168,8 +210,37 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     localStorage.setItem(STORAGE_KEY_AUTH, String(isAuthenticated));
   }, [isAuthenticated]);
 
-  // Current operational date: 2026-10-04 (October 4, 2026)
-  const [selectedDate, setSelectedDate] = useState<string>('2026-10-04');
+  // Real-time operational date (dynamically tracks current calendar day in real-time)
+  const [todayDate, setTodayDate] = useState<string>(getRealtimeDateString);
+  const [selectedDate, setSelectedDate] = useState<string>(getRealtimeDateString);
+  const [realtimeWITA, setRealtimeWITA] = useState<string>(getRealtimeClockWITA);
+  const [realtimeWIB, setRealtimeWIB] = useState<string>(getRealtimeClockWIB);
+
+  // Real-time ticking engine: updates clocks every second and automatically transitions to new day at midnight
+  useEffect(() => {
+    const updateTick = () => {
+      const liveDate = getRealtimeDateString();
+      setTodayDate(prev => {
+        if (prev !== liveDate) {
+          // Automatic rollover to new day in real time!
+          setSelectedDate(liveDate);
+          return liveDate;
+        }
+        return prev;
+      });
+      setRealtimeWITA(getRealtimeClockWITA());
+      setRealtimeWIB(getRealtimeClockWIB());
+    };
+
+    updateTick();
+    const interval = setInterval(updateTick, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const resetToToday = () => {
+    const liveDate = getRealtimeDateString();
+    setSelectedDate(liveDate);
+  };
 
   // Dynamic team members with Administrator accounts and created users
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>(() => {
@@ -177,8 +248,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const saved = localStorage.getItem(STORAGE_KEY_TEAM_MEMBERS);
       if (saved) {
         const parsed: TeamMember[] = JSON.parse(saved);
-        // Exclude legacy dummy superior 'mgr-ict-1' (Hendra Wijaya)
-        let filtered = parsed.filter(m => m.id !== 'mgr-ict-1');
+        // Exclude legacy dummy superior 'mgr-ict-1' (Hendra Wijaya) and removed administrator 'admin-christina'
+        let filtered = parsed.filter(
+          m => m.id !== 'mgr-ict-1' && m.id !== 'admin-christina' && m.email.toLowerCase() !== 'christinaaapps@gmail.com'
+        );
         // Ensure initial administrator accounts exist and have their passwords set
         INITIAL_TEAM_MEMBERS.forEach(initMember => {
           const idx = filtered.findIndex(
@@ -189,7 +262,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               ...filtered[idx],
               password: initMember.password,
               role: initMember.role,
-              badgeNumber: filtered[idx].badgeNumber || initMember.badgeNumber,
+              badgeNumber: initMember.badgeNumber,
             };
           } else {
             filtered.unshift(initMember);
@@ -263,18 +336,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     localStorage.setItem(STORAGE_KEY_SYSTEM_AUDIT, JSON.stringify(systemAuditLogs));
   }, [systemAuditLogs]);
 
-  // Active user (defaults to Administrator IT Christina)
+  // Active user (defaults to Administrator IT DSLNG Super Admin)
   const [currentUser, setCurrentUser] = useState<TeamMember>(() => {
     try {
       const savedUserId = localStorage.getItem(STORAGE_KEY_USER);
-      if (savedUserId && savedUserId !== 'mgr-ict-1') {
+      if (savedUserId && savedUserId !== 'mgr-ict-1' && savedUserId !== 'admin-christina') {
         const found = teamMembers.find(m => m.id === savedUserId);
         if (found) return found;
       }
     } catch {
       // ignore
     }
-    return teamMembers.find(m => m.id === 'admin-christina') || teamMembers.find(m => m.role === 'ADMINISTRATOR') || INITIAL_TEAM_MEMBERS[0];
+    return teamMembers.find(m => m.id === 'admin-it-01') || teamMembers.find(m => m.role === 'ADMINISTRATOR') || INITIAL_TEAM_MEMBERS[0];
   });
 
   const [dutyOverrideId, setDutyOverrideId] = useState<string | null>(() => {
@@ -291,7 +364,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     try {
       const saved = localStorage.getItem(STORAGE_KEY_REPORTS);
       if (saved) {
-        return JSON.parse(saved);
+        const parsed: DailyReport[] = JSON.parse(saved);
+        const merged = [...parsed];
+        SEED_PAST_REPORTS.forEach(seed => {
+          if (!merged.some(r => r.reportDate === seed.reportDate)) {
+            merged.push(seed);
+          }
+        });
+        merged.sort((a, b) => b.reportDate.localeCompare(a.reportDate));
+        return merged;
       }
     } catch (e) {
       console.error('Failed to load local reports', e);
@@ -384,8 +465,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   }, [dispatchedReminderDates]);
 
-  // Compute missing/unsubmitted day reminders up to current date
-  const missingReminders = detectMissingReportDays(reports, selectedDate, manualSchedules, dutyOverrideId, teamMembers).map(reminder => {
+  // Compute missing/unsubmitted day reminders up to real-time today
+  const missingReminders = detectMissingReportDays(reports, todayDate, manualSchedules, dutyOverrideId, teamMembers).map(reminder => {
     const isDispatched = !!dispatchedReminderDates[reminder.date];
     return {
       ...reminder,
@@ -441,6 +522,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           m.id.toLowerCase() === query ||
           m.name.toLowerCase() === query
       );
+
+      if (!targetUser && (query === 'christinaaapps@gmail.com' || query === '00080')) {
+        targetUser = teamMembers.find(m => m.id === 'admin-it-01') || teamMembers.find(m => m.role === 'ADMINISTRATOR');
+      }
     }
 
     if (!targetUser) {
@@ -599,6 +684,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const roleTitle = found.role === 'ICT_MANAGER' ? 'Superior / ICT Manager' : 'Helpdesk Engineer';
     recordAuditLog('USER_ACCOUNT_DELETED', `Penghapusan akun ${roleTitle}: ${found.name} (${found.badgeNumber}).`);
     showToast(`Akun ${roleTitle} ${found.name} telah dihapus.`, 'info');
+  };
+
+  const adminResetPassword = (userId: string, newPassword: string) => {
+    const target = teamMembers.find(m => m.id === userId);
+    if (!target) return;
+    setTeamMembers(prev =>
+      prev.map(m => (m.id === userId ? { ...m, password: newPassword } : m))
+    );
+    recordAuditLog(
+      'ADMIN_PASSWORD_RESET',
+      `Administrator (${currentUser.name}) melakukan reset kata sandi untuk akun ${target.name} (${target.role}, Badge: ${target.badgeNumber}).`
+    );
+    showToast(`Kata sandi akun ${target.name} berhasil direset oleh Administrator.`, 'success');
   };
 
   const deleteHelpdeskEngineer = (id: string) => {
@@ -912,6 +1010,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setCompanyAssets([]);
     setSystemAuditLogs([]);
     setIsAuthenticated(false);
+    setSelectedDate(getRealtimeDateString());
 
     setCurrentUser(INITIAL_TEAM_MEMBERS[0]);
     localStorage.removeItem(STORAGE_KEY_REPORTS);
@@ -948,6 +1047,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         addSuperiorAccount,
         updateTeamMember,
         deleteTeamMember,
+        adminResetPassword,
         servers,
         addServer,
         updateServer,
@@ -961,8 +1061,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         updateCompanyAsset,
         deleteCompanyAsset,
         reports,
+        todayDate,
+        realtimeWITA,
+        realtimeWIB,
         selectedDate,
         setSelectedDate,
+        resetToToday,
         dutyOverrideId,
         setDutyOverrideId,
         overrideReason,

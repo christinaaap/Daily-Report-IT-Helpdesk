@@ -23,9 +23,9 @@ export const LoginPage: React.FC = () => {
   // Active Tab: 'login' or 'register' (sebelahan)
   const [activeTab, setActiveTab] = useState<'login' | 'register'>('login');
 
-  // --- Login State (Akun Administrator telah disiapkan) ---
-  const [loginIdentifier, setLoginIdentifier] = useState('christinaaapps@gmail.com');
-  const [loginPassword, setLoginPassword] = useState('Pac-tina80');
+  // --- Login State ---
+  const [loginIdentifier, setLoginIdentifier] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
   const [showLoginPassword, setShowLoginPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [loginError, setLoginError] = useState<string | null>(null);
@@ -128,6 +128,10 @@ export const LoginPage: React.FC = () => {
     }
     if (!regBadge.trim()) {
       setRegError('Nomor Badge NIK wajib diisi.');
+      return;
+    }
+    if (!/^\d{1,5}$/.test(regBadge.trim())) {
+      setRegError('Nomor Badge NIK hanya boleh berisi angka saja (maksimal 5 digit, contoh: 10420).');
       return;
     }
 
@@ -295,7 +299,7 @@ export const LoginPage: React.FC = () => {
                         type="text"
                         value={loginIdentifier}
                         onChange={e => setLoginIdentifier(e.target.value)}
-                        placeholder="contoh: christinaaapps@gmail.com atau DSLNG-ADM-080"
+                        placeholder="contoh: nama@donggi-senoro.com atau 00080"
                         className="w-full bg-slate-950 border border-slate-700/80 rounded-xl pl-9 pr-3 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 font-mono"
                       />
                     </div>
@@ -306,7 +310,6 @@ export const LoginPage: React.FC = () => {
                       <label className="text-xs font-semibold text-slate-300">
                         Kata Sandi / PIN Operasional
                       </label>
-                      <span className="text-[10px] text-slate-400 font-mono">Administrator: Pac-tina80</span>
                     </div>
                     <div className="relative">
                       <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
@@ -326,18 +329,6 @@ export const LoginPage: React.FC = () => {
                         {showLoginPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </button>
                     </div>
-                  </div>
-
-                  {/* Kredensial Administrator Info Card */}
-                  <div className="p-2.5 rounded-xl bg-slate-950/80 border border-blue-900/50 text-[11px] text-slate-300 flex items-center justify-between">
-                    <div className="flex items-center gap-1.5">
-                      <ShieldCheck className="w-3.5 h-3.5 text-blue-400 shrink-0" />
-                      <span className="text-slate-400">Akun Admin:</span>
-                      <strong className="text-blue-300 font-mono">christinaaapps@gmail.com</strong>
-                    </div>
-                    <span className="font-mono text-[10px] text-emerald-400 bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-800/40">
-                      Sandi: Pac-tina80
-                    </span>
                   </div>
 
                   <div className="flex items-center justify-between text-xs pt-1">
@@ -431,17 +422,29 @@ export const LoginPage: React.FC = () => {
                     </div>
 
                     <div>
-                      <label className="block text-xs font-semibold text-slate-300 mb-1">
-                        Nomor Badge NIK <span className="text-rose-400">*</span>
-                      </label>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="text-xs font-semibold text-slate-300">
+                          Nomor Badge NIK <span className="text-rose-400">*</span>
+                        </label>
+                        <span className="text-[10px] text-slate-500 font-mono">Angka maks. 5 digit</span>
+                      </div>
                       <input
                         type="text"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
+                        maxLength={5}
                         required
                         value={regBadge}
-                        onChange={e => setRegBadge(e.target.value)}
-                        placeholder="DSLNG-ENG-002"
-                        className="w-full bg-slate-950 border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 font-mono"
+                        onChange={e => {
+                          const val = e.target.value.replace(/\D/g, '').slice(0, 5);
+                          setRegBadge(val);
+                        }}
+                        placeholder="contoh: 10420"
+                        className="w-full bg-slate-950 border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 font-mono tracking-wider"
                       />
+                      <span className="text-[10px] text-slate-500 mt-1 block">
+                        Hanya angka 0-9 ({regBadge.length}/5 digit)
+                      </span>
                     </div>
                   </div>
 

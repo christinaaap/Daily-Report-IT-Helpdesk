@@ -104,16 +104,13 @@ export const AuditTrailView: React.FC = () => {
           <div className="flex items-center gap-2">
             <History className="w-5 h-5 text-blue-700" />
             <h2 className="text-base font-bold text-slate-900">
-              Cryptographic Operational Audit Trail (ISO 27001)
+              Riwayat Aktivitas &amp; Log Operasional
             </h2>
             <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 font-semibold flex items-center gap-1">
               <ShieldCheck className="w-3 h-3 text-emerald-600" />
               <span>Khusus Superior &amp; Admin</span>
             </span>
           </div>
-          <p className="text-xs text-slate-600 mt-1 max-w-2xl leading-relaxed">
-            Pencatatan kepatuhan ISO 27001 immutable: Rekaman penguncian SHA-256 laporan harian, persetujuan tanda tangan digital Superior, serta administrasi fasilitas &amp; akun.
-          </p>
         </div>
 
         {/* Live Search & Export Actions */}

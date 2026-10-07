@@ -22,6 +22,9 @@ import { ReportStatus } from '../types';
 export const CalendarDashboard: React.FC = () => {
   const {
     reports,
+    todayDate,
+    realtimeWITA,
+    realtimeWIB,
     selectedDate,
     setSelectedDate,
     openCreateModal,
@@ -38,9 +41,24 @@ export const CalendarDashboard: React.FC = () => {
     isCurrentEligibleForDate,
   } = useApp();
 
-  // Current calendar view state (Default to October 2026 based on metadata)
-  const [currentYear, setCurrentYear] = useState<number>(2026);
-  const [currentMonth, setCurrentMonth] = useState<number>(9); // 0-indexed: 9 = October
+  // Dynamic calendar view state (Synchronized to real-time todayDate)
+  const [currentYear, setCurrentYear] = useState<number>(() => {
+    const parts = todayDate.split('-').map(Number);
+    return parts[0] || new Date().getFullYear();
+  });
+  const [currentMonth, setCurrentMonth] = useState<number>(() => {
+    const parts = todayDate.split('-').map(Number);
+    return parts[1] ? parts[1] - 1 : new Date().getMonth();
+  });
+
+  // Keep calendar month and year dynamically synchronized with todayDate
+  React.useEffect(() => {
+    const parts = todayDate.split('-').map(Number);
+    if (parts[0] && parts[1]) {
+      setCurrentYear(parts[0]);
+      setCurrentMonth(parts[1] - 1);
+    }
+  }, [todayDate]);
 
   const monthNames = [
     'January', 'February', 'March', 'April', 'May', 'June',
@@ -65,6 +83,13 @@ export const CalendarDashboard: React.FC = () => {
     }
   };
 
+  const handleJumpToToday = () => {
+    const [y, m] = todayDate.split('-').map(Number);
+    setCurrentYear(y);
+    setCurrentMonth(m - 1);
+    setSelectedDate(todayDate);
+  };
+
   // Calendar math
   const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
   const firstDayOfWeek = new Date(currentYear, currentMonth, 1).getDay(); // 0 is Sunday
@@ -81,7 +106,7 @@ export const CalendarDashboard: React.FC = () => {
   const totalApproved = reports.filter(r => r.status === 'APPROVED').length;
   const totalSubmitted = reports.filter(r => r.status === 'SUBMITTED').length;
   const totalRejected = reports.filter(r => r.status === 'REJECTED').length;
-  const currentWeekRoster = getRosterForDate(selectedDate, manualSchedules, dutyOverrideId, teamMembers);
+  const currentWeekRoster = getRosterForDate(todayDate, manualSchedules, dutyOverrideId, teamMembers);
   const scheduledDutyUser = teamMembers.find(m => m.id === currentWeekRoster.siteDutyEngineerId);
 
   const isAdmin = currentUser.role === 'ADMINISTRATOR';
@@ -176,34 +201,33 @@ export const CalendarDashboard: React.FC = () => {
               <h2 className="text-base font-bold text-slate-900">
                 Site Uso &amp; HO Jkt Shift Roster
               </h2>
-              <span className="text-xs font-mono px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-800 border border-blue-200 font-medium">
-                Cycle: Week 40, Oct 2026
-              </span>
+              <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-mono font-medium shadow-2xs">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+                <span>Live Real-Time: <strong className="font-bold text-emerald-950">{todayDate}</strong></span>
+                <span className="text-emerald-500 font-bold">•</span>
+                <span className="text-emerald-900 font-bold">{realtimeWITA}</span>
+                <span className="text-[11px] text-emerald-700">({realtimeWIB})</span>
+              </div>
             </div>
-            <p className="text-xs text-slate-600 mt-1 max-w-2xl leading-relaxed">
-              Standard operating procedure: Mandatory Duty Engineer for this cycle is{' '}
-              <strong className="text-slate-900 font-semibold">{scheduledDutyUser?.name}</strong> (Site Uso Shift A: 06.00 - 18.00 WITA).
-              Only the assigned duty engineer (or Administrator) has authorization to submit the locked daily operational report.
-            </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-2 shrink-0 flex-wrap">
           <button
             type="button"
             onClick={openRosterModal}
-            className="px-3.5 py-2 text-xs font-semibold rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 transition-colors"
+            className="px-3.5 py-2 text-xs font-semibold rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 transition-colors cursor-pointer"
           >
             Inspect Shift Schedule
           </button>
-          {isCurrentEligibleForDate(selectedDate).isEligible && (
+          {isCurrentEligibleForDate(todayDate).isEligible && (
             <button
               type="button"
-              onClick={() => openCreateModal(selectedDate)}
-              className="px-3.5 py-2 text-xs font-semibold rounded-lg bg-blue-700 hover:bg-blue-800 text-white flex items-center gap-1.5 shadow-xs transition-colors"
+              onClick={() => openCreateModal(todayDate)}
+              className="px-3.5 py-2 text-xs font-semibold rounded-lg bg-blue-700 hover:bg-blue-800 text-white flex items-center gap-1.5 shadow-xs transition-colors cursor-pointer"
             >
               <Plus className="w-3.5 h-3.5" />
-              Create Today's Report
+              <span>Buat Laporan Hari Ini</span>
             </button>
           )}
         </div>
@@ -267,7 +291,7 @@ export const CalendarDashboard: React.FC = () => {
       {/* Calendar Header & Status Legend */}
       <div className="rounded-xl border border-slate-200 bg-white p-5 space-y-4 shadow-xs">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
             <h3 className="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
               <CalendarIcon className="w-5 h-5 text-blue-700" />
               <span>
@@ -279,7 +303,7 @@ export const CalendarDashboard: React.FC = () => {
                 type="button"
                 onClick={handlePrevMonth}
                 aria-label="Previous month"
-                className="p-1 text-slate-600 hover:text-slate-900 rounded hover:bg-white transition-colors"
+                className="p-1 text-slate-600 hover:text-slate-900 rounded hover:bg-white transition-colors cursor-pointer"
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>
@@ -287,11 +311,20 @@ export const CalendarDashboard: React.FC = () => {
                 type="button"
                 onClick={handleNextMonth}
                 aria-label="Next month"
-                className="p-1 text-slate-600 hover:text-slate-900 rounded hover:bg-white transition-colors"
+                className="p-1 text-slate-600 hover:text-slate-900 rounded hover:bg-white transition-colors cursor-pointer"
               >
                 <ChevronRight className="w-4 h-4" />
               </button>
             </div>
+            <button
+              type="button"
+              onClick={handleJumpToToday}
+              className="px-2.5 py-1 text-xs font-semibold rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 transition-colors flex items-center gap-1.5 shadow-2xs cursor-pointer"
+              title="Lompat ke tanggal hari ini secara real-time"
+            >
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              <span>Hari Ini ({todayDate})</span>
+            </button>
           </div>
 
           {/* Status Color Indicators Legend per PRD Step 2 */}
@@ -343,17 +376,18 @@ export const CalendarDashboard: React.FC = () => {
             const dayPadded = String(dayNum).padStart(2, '0');
             const dateStr = `${currentYear}-${monthPadded}-${dayPadded}`;
             const report = reports.find(r => r.reportDate === dateStr);
-            const isToday = dateStr === selectedDate;
+            const isToday = dateStr === todayDate;
+            const isSelected = dateStr === selectedDate;
             const isSunday = new Date(currentYear, currentMonth, dayNum).getDay() === 0;
 
             const isMissingDay = missingReminders.some(m => m.date === dateStr);
-
+            const isFuture = dateStr > todayDate;
             const eligibility = isCurrentEligibleForDate(dateStr);
 
             // Determine status color indicator for corporate look
             let statusColor = 'border-slate-200 bg-white text-slate-700 hover:border-slate-300';
             let indicatorBg = 'bg-slate-300';
-            let indicatorText = 'Pending (No Report)';
+            let indicatorText = 'Pending (Belum Diisi)';
 
             if (report) {
               if (report.status === 'APPROVED') {
@@ -374,40 +408,52 @@ export const CalendarDashboard: React.FC = () => {
               statusColor = 'border-amber-300 bg-amber-50/40 text-amber-950 hover:border-amber-400 ring-1 ring-amber-200';
               indicatorBg = 'bg-amber-400 animate-ping';
               indicatorText = 'Missing / Belum Diisi (Reminder Aktif)';
+            } else if (isFuture) {
+              statusColor = 'border-slate-200 bg-slate-50/40 text-slate-500 hover:border-slate-300';
+              indicatorBg = 'bg-slate-200';
+              indicatorText = 'Jadwal Roster Mendatang';
             }
 
             return (
               <div
                 key={dateStr}
                 onClick={() => {
+                  setSelectedDate(dateStr);
                   if (report) {
                     openViewModal(report.id);
-                  } else if (eligibility.isEligible) {
+                  } else if (eligibility.isEligible && (isToday || dateStr <= todayDate || isAdmin)) {
                     openCreateModal(dateStr);
                   } else if (isMissingDay) {
                     // Open reminder details
                     openRemindersModal();
-                  } else {
-                    setSelectedDate(dateStr);
                   }
                 }}
                 className={`min-h-[100px] sm:min-h-[115px] p-2.5 rounded-lg border transition-all cursor-pointer flex flex-col justify-between group shadow-2xs ${statusColor} ${
-                  isToday ? 'ring-2 ring-blue-600 shadow-xs' : ''
-                }`}
+                  isToday ? 'ring-2 ring-blue-600 bg-blue-50/30 shadow-md' : ''
+                } ${isSelected && !isToday ? 'ring-2 ring-purple-500 shadow-xs' : ''}`}
               >
                 {/* Header of day cell */}
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-1.5 flex-wrap">
                     <span
-                      className={`text-sm font-bold font-mono ${
-                        isSunday ? 'text-rose-600' : isToday ? 'text-blue-700' : 'text-slate-800'
+                      className={`text-sm font-mono ${
+                        isToday
+                          ? 'text-blue-700 font-extrabold text-base'
+                          : isSunday
+                          ? 'text-rose-600 font-bold'
+                          : 'text-slate-800 font-bold'
                       }`}
                     >
                       {dayNum}
                     </span>
                     {isToday && (
-                      <span className="text-[10px] font-semibold uppercase bg-blue-100 text-blue-800 px-1 rounded font-mono">
-                        Today
+                      <span className="text-[10px] font-bold uppercase bg-blue-600 text-white px-1.5 py-0.5 rounded font-mono shadow-xs animate-pulse">
+                        Hari Ini
+                      </span>
+                    )}
+                    {isSelected && !isToday && (
+                      <span className="text-[10px] font-medium uppercase bg-purple-100 text-purple-800 px-1 rounded font-mono">
+                        Dipilih
                       </span>
                     )}
                   </div>

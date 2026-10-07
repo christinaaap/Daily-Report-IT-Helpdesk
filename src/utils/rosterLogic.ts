@@ -193,10 +193,10 @@ export function detectMissingReportDays(
   dutyOverrideId?: string | null,
   teamMembers: TeamMember[] = TEAM_MEMBERS
 ): MissingReportReminder[] {
-  const currentDate = new Date(currentDateStr);
-  const currentYear = currentDate.getFullYear();
-  const currentMonth = currentDate.getMonth();
-  const currentDay = currentDate.getDate();
+  const parts = currentDateStr.split('-').map(Number);
+  const currentYear = parts[0];
+  const currentMonth = parts[1] - 1;
+  const currentDay = parts[2];
 
   const missingReminders: MissingReportReminder[] = [];
 
@@ -213,6 +213,7 @@ export function detectMissingReportDays(
       const assignedEngineer = teamMembers.find(m => m.id === roster.siteDutyEngineerId);
 
       const dayDate = new Date(dateStr);
+      const currentDate = new Date(currentDateStr);
       const diffTime = currentDate.getTime() - dayDate.getTime();
       const daysOverdue = Math.max(0, Math.floor(diffTime / (1000 * 60 * 60 * 24)));
 
