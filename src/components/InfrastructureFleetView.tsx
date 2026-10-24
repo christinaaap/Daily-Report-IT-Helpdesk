@@ -477,22 +477,27 @@ export const InfrastructureFleetView: React.FC = () => {
         )}
       </div>
 
-      {/* Section 2: Primary Server Fleet */}
+      {/* Section 2: Server Check Master Nodes */}
       <div className="rounded-xl border border-slate-200 bg-white p-5 space-y-4 shadow-xs">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-slate-100 gap-2">
-          <div className="flex items-center gap-2">
-            <Cpu className="w-4 h-4 text-emerald-700" />
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700">
-              Primary Server Fleet ({servers.length} Production Nodes)
-            </h3>
+          <div>
+            <div className="flex items-center gap-2">
+              <Cpu className="w-4 h-4 text-emerald-700" />
+              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-800">
+                Server Check Master Nodes ({servers.length} Production Nodes)
+              </h3>
+            </div>
+            <p className="text-[11px] text-slate-500 mt-0.5">
+              List server yang didaftarkan oleh Admin di sini akan menjadi checklist otomatis pada menu "Server Check" di formulir laporan harian Helpdesk.
+            </p>
           </div>
           <button
             type="button"
             onClick={handleOpenAddServer}
-            className="text-xs font-semibold text-emerald-700 hover:text-emerald-900 hover:underline flex items-center gap-1 self-start sm:self-auto"
+            className="text-xs font-semibold text-emerald-700 hover:text-emerald-900 hover:underline flex items-center gap-1 self-start sm:self-auto shrink-0"
           >
             <Plus className="w-3.5 h-3.5" />
-            Tambah Server Node
+            + Tambah Server Node
           </button>
         </div>
 

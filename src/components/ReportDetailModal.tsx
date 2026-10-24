@@ -18,6 +18,9 @@ import {
   AlertTriangle,
   History,
   FileCheck,
+  UserCheck,
+  ShoppingCart,
+  Filter,
 } from 'lucide-react';
 import { DigitalSignaturePad } from './DigitalSignaturePad';
 
@@ -35,8 +38,9 @@ export const ReportDetailModal: React.FC<ReportDetailModalProps> = ({ reportId }
   const [managerComments, setManagerComments] = useState('');
   const [signatureDataUrl, setSignatureDataUrl] = useState<string | null>(null);
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
-  const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'PHOTOS' | 'SERVERS' | 'AUDIT'>('OVERVIEW');
+  const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'PHOTOS' | 'SERVERS' | 'LICENSES' | 'AUDIT'>('OVERVIEW');
   const [expandedPhoto, setExpandedPhoto] = useState<string | null>(null);
+  const [slaFilter, setSlaFilter] = useState<'ALL' | 'SLA_BREACHED' | 'SLA_AT_RISK'>('ALL');
 
   if (!report) {
     return (
@@ -86,6 +90,18 @@ export const ReportDetailModal: React.FC<ReportDetailModalProps> = ({ reportId }
   const handlePrint = () => {
     window.print();
   };
+
+  // Extract SLA ticket details
+  const reportSlaTickets = report.slaTickets || report.tickets.slaTickets || [];
+  const filteredSlaTickets = reportSlaTickets.filter(t => {
+    if (slaFilter === 'ALL') return true;
+    return t.slaStatus === slaFilter;
+  });
+
+  const ms365Items = (report.licenses?.items || []).filter(item => item.category === 'MS365');
+  const otherItems = (report.licenses?.items || []).filter(item => item.category === 'OTHERS');
+  const userAssignments = report.licenses?.userAssignments || [];
+  const purchases = report.licenses?.purchases || [];
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 overflow-y-auto print:p-0 print:bg-white print:text-black">
@@ -144,7 +160,7 @@ export const ReportDetailModal: React.FC<ReportDetailModalProps> = ({ reportId }
           </div>
         </div>
 
-        {/* Tab Sub-navigation */}
+        {/* Tab Sub-navigation: Revised with Server Check and MS365 dan Software Others */}
         <div className="px-6 pt-3 border-b border-slate-200 bg-white flex items-center gap-4 overflow-x-auto shrink-0 print:hidden">
           <button
             type="button"
@@ -179,7 +195,19 @@ export const ReportDetailModal: React.FC<ReportDetailModalProps> = ({ reportId }
             }`}
           >
             <Server className="w-3.5 h-3.5" />
-            Servers &amp; Licenses
+            Server Check ({report.servers.filter(s => s.status === 'ONLINE').length}/{report.servers.length} Online)
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('LICENSES')}
+            className={`pb-2.5 text-xs font-semibold border-b-2 flex items-center gap-1.5 transition-colors ${
+              activeTab === 'LICENSES'
+                ? 'border-blue-700 text-blue-700'
+                : 'border-transparent text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            <FileKey className="w-3.5 h-3.5" />
+            MS365 dan Software Others
           </button>
           <button
             type="button"
@@ -191,7 +219,7 @@ export const ReportDetailModal: React.FC<ReportDetailModalProps> = ({ reportId }
             }`}
           >
             <History className="w-3.5 h-3.5" />
-            Immutable Audit Trail
+            Audit Trail
           </button>
         </div>
 
@@ -254,7 +282,7 @@ export const ReportDetailModal: React.FC<ReportDetailModalProps> = ({ reportId }
                 <div className="flex items-center justify-between text-xs">
                   <span className="font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
                     <Ticket className="w-4 h-4 text-blue-700" />
-                    Ticket Operations &amp; SLA Metrics
+                    Section 1: Ticket Operations &amp; SLA Metrics
                   </span>
                   <span className="font-mono text-emerald-800 font-semibold text-[11px]">
                     SLA Compliance: {report.tickets.slaBreached === 0 ? '100% Nominal' : `${report.tickets.slaBreached} Breaches Logged`}
@@ -306,12 +334,121 @@ export const ReportDetailModal: React.FC<ReportDetailModalProps> = ({ reportId }
                 </div>
 
                 {/* Category breakdown table */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 border-t border-slate-100 text-[11px] font-mono text-slate-600">
-                  <div>Helpdesk: <strong className="text-slate-900">{report.tickets.categoryBreakdown.helpdesk}</strong></div>
-                  <div>MES: <strong className="text-slate-900">{report.tickets.categoryBreakdown.mes}</strong></div>
-                  <div>ERP: <strong className="text-slate-900">{report.tickets.categoryBreakdown.erp}</strong></div>
-                  <div>Network/Telecom/Radio: <strong className="text-slate-900">{report.tickets.categoryBreakdown.networkTelecomRadio}</strong></div>
+                <div className="space-y-1.5 pt-2 border-t border-slate-100">
+                  <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">
+                    Service Request Breakdown by Operational Category
+                  </span>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs font-mono text-slate-700">
+                    <div className="p-2 rounded bg-slate-50 border border-slate-200">
+                      Helpdesk: <strong className="text-slate-900">{report.tickets.categoryBreakdown.helpdesk}</strong>
+                    </div>
+                    <div className="p-2 rounded bg-slate-50 border border-slate-200">
+                      MES: <strong className="text-slate-900">{report.tickets.categoryBreakdown.mes}</strong>
+                    </div>
+                    <div className="p-2 rounded bg-slate-50 border border-slate-200">
+                      ERP: <strong className="text-slate-900">{report.tickets.categoryBreakdown.erp}</strong>
+                    </div>
+                    <div className="p-2 rounded bg-slate-50 border border-slate-200">
+                      Network/Telecom/Radio: <strong className="text-slate-900">{report.tickets.categoryBreakdown.networkTelecomRadio}</strong>
+                    </div>
+                  </div>
                 </div>
+
+                {/* Detailed SLA Breached & SLA At Risk Section (User Request #1) */}
+                {reportSlaTickets.length > 0 && (
+                  <div className="pt-3 border-t border-slate-200 space-y-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <AlertTriangle className="w-4 h-4 text-amber-600" />
+                        <h4 className="text-xs font-bold uppercase tracking-wider text-slate-900">
+                          Rincian Tiket Over SLA &amp; SLA At Risk ({reportSlaTickets.length} Tiket)
+                        </h4>
+                      </div>
+
+                      {/* Filter tabs */}
+                      <div className="flex items-center gap-1.5 text-xs font-mono">
+                        <button
+                          type="button"
+                          onClick={() => setSlaFilter('ALL')}
+                          className={`px-2 py-0.5 rounded text-[11px] ${
+                            slaFilter === 'ALL'
+                              ? 'bg-slate-900 text-white font-bold'
+                              : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                          }`}
+                        >
+                          Semua ({reportSlaTickets.length})
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setSlaFilter('SLA_BREACHED')}
+                          className={`px-2 py-0.5 rounded text-[11px] flex items-center gap-1 ${
+                            slaFilter === 'SLA_BREACHED'
+                              ? 'bg-rose-700 text-white font-bold'
+                              : 'bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200'
+                          }`}
+                        >
+                          Breached ({reportSlaTickets.filter(t => t.slaStatus === 'SLA_BREACHED').length})
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setSlaFilter('SLA_AT_RISK')}
+                          className={`px-2 py-0.5 rounded text-[11px] flex items-center gap-1 ${
+                            slaFilter === 'SLA_AT_RISK'
+                              ? 'bg-amber-600 text-white font-bold'
+                              : 'bg-amber-50 text-amber-700 hover:bg-amber-100 border border-amber-200'
+                          }`}
+                        >
+                          At Risk ({reportSlaTickets.filter(t => t.slaStatus === 'SLA_AT_RISK').length})
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="border border-slate-200 rounded-xl overflow-x-auto">
+                      <table className="w-full text-left text-xs">
+                        <thead className="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200">
+                          <tr>
+                            <th className="py-2.5 px-3">No. Tiket</th>
+                            <th className="py-2.5 px-3">Subject</th>
+                            <th className="py-2.5 px-3">Requester</th>
+                            <th className="py-2.5 px-3">Category</th>
+                            <th className="py-2.5 px-3">Over SLA</th>
+                            <th className="py-2.5 px-3">Status</th>
+                            <th className="py-2.5 px-3">Technician Bertugas</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 font-mono">
+                          {filteredSlaTickets.map(t => (
+                            <tr key={t.id} className="hover:bg-slate-50">
+                              <td className="py-2.5 px-3 font-bold text-blue-700">{t.ticketNumber}</td>
+                              <td className="py-2.5 px-3 font-sans text-slate-900 font-medium">{t.subject}</td>
+                              <td className="py-2.5 px-3 font-sans text-slate-600">{t.requester}</td>
+                              <td className="py-2.5 px-3">
+                                <span className="bg-slate-100 text-slate-700 px-2 py-0.5 rounded font-sans text-[11px]">
+                                  {t.category}
+                                </span>
+                              </td>
+                              <td className="py-2.5 px-3 text-rose-700 font-bold">{t.overSlaTime}</td>
+                              <td className="py-2.5 px-3">
+                                <span
+                                  className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                                    t.slaStatus === 'SLA_BREACHED'
+                                      ? 'bg-rose-100 text-rose-800 border border-rose-200'
+                                      : 'bg-amber-100 text-amber-800 border border-amber-200'
+                                  }`}
+                                >
+                                  {t.slaStatus === 'SLA_BREACHED' ? 'BREACHED' : 'AT RISK'}
+                                </span>
+                              </td>
+                              <td className="py-2.5 px-3 font-sans font-semibold text-slate-800">
+                                {t.technician}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Physical Check Summary Teaser */}
@@ -367,7 +504,7 @@ export const ReportDetailModal: React.FC<ReportDetailModalProps> = ({ reportId }
                 </div>
               </div>
 
-              {/* Superior Review & E-Signature Display (if already reviewed) */}
+              {/* Superior Review & E-Signature Display */}
               {report.superiorReview && (
                 <div className="rounded-xl border border-emerald-300 bg-emerald-50/60 p-5 space-y-4 shadow-2xs">
                   <div className="flex items-center justify-between">
@@ -378,53 +515,54 @@ export const ReportDetailModal: React.FC<ReportDetailModalProps> = ({ reportId }
                           Formal Superior Approval &amp; E-Signature Stamp
                         </h4>
                         <span className="text-[11px] text-slate-600 font-mono">
-                          Validated by {report.superiorReview.managerName} on {report.superiorReview.reviewedAt}
+                          Reviewer: {report.superiorReview.managerName} · {report.superiorReview.reviewedAt}
                         </span>
                       </div>
                     </div>
-                    <span className="text-xs font-mono font-bold px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
+                    <span className="text-xs font-mono font-bold px-2.5 py-1 rounded bg-emerald-700 text-white shadow-2xs">
                       {report.superiorReview.decision}
                     </span>
                   </div>
 
-                  <div className="p-3.5 rounded-lg bg-white border border-emerald-200 text-xs text-slate-800">
-                    <strong className="text-slate-600 block mb-1">Superior Evaluation Comments:</strong>
+                  <div className="p-3 bg-white rounded-lg border border-emerald-200 text-xs text-slate-800">
+                    <strong className="text-emerald-900 block font-semibold mb-1">
+                      Superior Feedback &amp; Verification Remarks:
+                    </strong>
                     "{report.superiorReview.comments}"
                   </div>
 
-                  <div className="flex items-center justify-between pt-2 border-t border-emerald-200/80">
-                    <div>
-                      <span className="text-[10px] uppercase font-mono text-slate-500 block">Certificate ID</span>
-                      <span className="text-xs font-mono text-blue-900 font-bold">{report.superiorReview.digitalStampId}</span>
+                  <div className="flex items-center justify-between pt-2 border-t border-emerald-200/60">
+                    <div className="text-[11px] font-mono text-slate-500">
+                      Digital Audit Stamp: {report.superiorReview.digitalStampId}
                     </div>
-
-                    <div className="text-right">
-                      <span className="text-[10px] uppercase font-mono text-slate-500 block mb-1">Authenticated Signature</span>
-                      <div className="h-12 w-48 rounded bg-white p-1 border border-slate-300 flex items-center justify-center shadow-xs">
+                    {report.superiorReview.signatureDataUrl && (
+                      <div className="border border-slate-300 rounded bg-white p-1">
                         <img
                           src={report.superiorReview.signatureDataUrl}
-                          alt="Superior E-Signature"
-                          className="max-h-full max-w-full object-contain"
+                          alt="Superior Digital Signature"
+                          className="h-10 object-contain"
                         />
                       </div>
-                    </div>
+                    )}
                   </div>
                 </div>
               )}
             </div>
           )}
 
-          {/* TAB 2: VTC PHYSICAL PROOF PHOTOS GALLERY */}
+          {/* TAB 2: PHOTOS */}
           {activeTab === 'PHOTOS' && (
-            <div className="space-y-6">
-              <div className="flex items-center justify-between text-xs text-slate-600 pb-2 border-b border-slate-200">
-                <span className="font-semibold">06:00 AM Physical Walkthrough Evidence Archive (PRD Mandatory Requirement)</span>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between text-xs pb-2 border-b border-slate-200">
+                <span className="font-semibold text-slate-700">
+                  Mandatory Conference Room &amp; VTC Physical Walkthrough Photos
+                </span>
                 <span className="font-mono text-emerald-700 font-bold">
-                  {report.physicalInspections.filter(p => p.photoEvidenceUrl).length} Verified Photos
+                  {report.physicalInspections.filter(p => p.photoEvidenceUrl).length}/{report.physicalInspections.length} Rooms Verified
                 </span>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {report.physicalInspections.map((room, index) => (
                   <div
                     key={room.id}
@@ -442,7 +580,6 @@ export const ReportDetailModal: React.FC<ReportDetailModalProps> = ({ reportId }
                       </span>
                     </div>
 
-                    {/* High-res inspection image frame */}
                     <div
                       onClick={() => room.photoEvidenceUrl && setExpandedPhoto(room.photoEvidenceUrl)}
                       className="relative h-60 rounded-lg bg-slate-100 overflow-hidden border border-slate-200 cursor-pointer group flex items-center justify-center shadow-2xs"
@@ -468,7 +605,6 @@ export const ReportDetailModal: React.FC<ReportDetailModalProps> = ({ reportId }
                       )}
                     </div>
 
-                    {/* Room Checklist Results */}
                     <div className="grid grid-cols-3 gap-2 text-xs font-mono text-center">
                       <div className="p-2 rounded bg-slate-50 border border-slate-200">
                         <span className="text-[10px] text-slate-500 block">Audio Pod</span>
@@ -483,24 +619,30 @@ export const ReportDetailModal: React.FC<ReportDetailModalProps> = ({ reportId }
                         <span className="text-emerald-700 font-bold">{room.sharingCablesStatus}</span>
                       </div>
                     </div>
-
-                    <div className="text-[11px] text-slate-700 bg-slate-50 p-2.5 rounded-lg border border-slate-200">
-                      <strong className="text-slate-500 font-semibold">Duty Note:</strong> {room.notes}
-                    </div>
                   </div>
                 ))}
               </div>
             </div>
           )}
 
-          {/* TAB 3: SERVERS & LICENSES */}
+          {/* TAB 3: SERVER CHECK (REVISED SECTION 2) */}
           {activeTab === 'SERVERS' && (
             <div className="space-y-6">
-              {/* Server table */}
               <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-2xs space-y-3">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700">
-                  Infrastructure Health Checklist (Luwuk DC &amp; Jakarta Node)
-                </h3>
+                <div className="flex items-center justify-between pb-2 border-b border-slate-200">
+                  <div>
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900">
+                      Section 2: Server Check (Infrastructure Health Checklist)
+                    </h3>
+                    <p className="text-[11px] text-slate-500 mt-0.5">
+                      Daftar server terdata oleh Admin dan diverifikasi ketersediaannya oleh Helpdesk pada shift ini.
+                    </p>
+                  </div>
+                  <span className="text-xs font-mono font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded border border-emerald-200">
+                    {report.servers.filter(s => s.status === 'ONLINE').length} / {report.servers.length} Operational
+                  </span>
+                </div>
+
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-xs">
                     <thead className="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200">
@@ -510,6 +652,7 @@ export const ReportDetailModal: React.FC<ReportDetailModalProps> = ({ reportId }
                         <th className="py-2.5 px-3">Role</th>
                         <th className="py-2.5 px-3">Status</th>
                         <th className="py-2.5 px-3 text-right">Ping</th>
+                        <th className="py-2.5 px-3">Catatan Inspeksi</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 font-mono">
@@ -525,6 +668,8 @@ export const ReportDetailModal: React.FC<ReportDetailModalProps> = ({ reportId }
                               className={`px-2 py-0.5 rounded text-[10px] font-bold ${
                                 server.status === 'ONLINE'
                                   ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                                  : server.status === 'DEGRADED'
+                                  ? 'bg-amber-100 text-amber-800 border border-amber-200'
                                   : 'bg-rose-100 text-rose-800 border border-rose-200'
                               }`}
                             >
@@ -532,214 +677,330 @@ export const ReportDetailModal: React.FC<ReportDetailModalProps> = ({ reportId }
                             </span>
                           </td>
                           <td className="py-3 px-3 text-right text-slate-600">{server.latencyMs}ms</td>
+                          <td className="py-3 px-3 font-sans text-slate-600 text-[11px]">
+                            {server.notes || 'Status nominal.'}
+                          </td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
                 </div>
               </div>
+            </div>
+          )}
 
+          {/* TAB 4: MS365 DAN SOFTWARE OTHERS (REVISED SECTION 3) */}
+          {activeTab === 'LICENSES' && (
+            <div className="space-y-6">
               {/* License snapshot */}
+              <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-2xs space-y-4">
+                <div className="flex items-center justify-between pb-2 border-b border-slate-200">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900">
+                    1. Status Ketersediaan Lisensi (MS365 &amp; Software Others)
+                  </h3>
+                  <span className="text-[11px] text-slate-500 font-mono">Available = Total - Assigned</span>
+                </div>
+
+                {/* Microsoft 365 Section */}
+                <div className="space-y-2">
+                  <span className="text-xs font-bold text-blue-900 bg-blue-50 px-2 py-0.5 rounded border border-blue-200 font-mono inline-block">
+                    Microsoft 365 Subscriptions
+                  </span>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                    {(ms365Items.length > 0 ? ms365Items : [
+                      { id: '1', softwareName: 'Microsoft 365 E3', totalLicenses: report.licenses.m365E3Total, assignedLicenses: report.licenses.m365E3Assigned },
+                      { id: '2', softwareName: 'Microsoft 365 E5', totalLicenses: report.licenses.m365E5Total, assignedLicenses: report.licenses.m365E5Assigned },
+                    ]).map(item => {
+                      const avail = item.totalLicenses - item.assignedLicenses;
+                      return (
+                        <div key={item.id} className="p-4 rounded-xl bg-slate-50 border border-slate-200">
+                          <span className="text-slate-600 font-bold block">{item.softwareName}</span>
+                          <div className="text-lg font-bold font-mono text-slate-900 mt-1">
+                            {item.assignedLicenses} / {item.totalLicenses} Assigned
+                          </div>
+                          <div className="text-[11px] text-emerald-700 font-semibold font-mono mt-1">
+                            {avail} Available Seats
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Software Others Section */}
+                <div className="space-y-2 pt-2">
+                  <span className="text-xs font-bold text-slate-800 bg-slate-100 px-2 py-0.5 rounded border border-slate-200 font-mono inline-block">
+                    Software Others (Engineering &amp; Enterprise Apps)
+                  </span>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                    {(otherItems.length > 0 ? otherItems : [
+                      { id: '3', softwareName: 'AutoCAD Floating AEC', totalLicenses: report.licenses.autocadFloatingTotal, assignedLicenses: report.licenses.autocadFloatingInUse },
+                    ]).map(item => {
+                      const avail = item.totalLicenses - item.assignedLicenses;
+                      return (
+                        <div key={item.id} className="p-4 rounded-xl bg-slate-50 border border-slate-200">
+                          <span className="text-slate-600 font-bold block">{item.softwareName}</span>
+                          <div className="text-lg font-bold font-mono text-slate-900 mt-1">
+                            {item.assignedLicenses} / {item.totalLicenses} In Use
+                          </div>
+                          <div className="text-[11px] text-blue-700 font-semibold font-mono mt-1">
+                            {avail} Floating Free
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              {/* User Assignments */}
               <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-2xs space-y-3">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700">
-                  Software License Availability Snapshot
-                </h3>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-                  <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
-                    <span className="text-slate-500 font-medium block">Microsoft 365 E3</span>
-                    <div className="text-lg font-bold font-mono text-slate-900 mt-1">
-                      {report.licenses.m365E3Assigned} / {report.licenses.m365E3Total}
-                    </div>
+                <div className="flex items-center justify-between pb-2 border-b border-slate-200">
+                  <div className="flex items-center gap-2">
+                    <UserCheck className="w-4 h-4 text-emerald-600" />
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900">
+                      2. Penugasan Lisensi ke User Baru ({userAssignments.length} Penugasan)
+                    </h3>
                   </div>
-                  <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
-                    <span className="text-slate-500 font-medium block">Microsoft 365 E5</span>
-                    <div className="text-lg font-bold font-mono text-amber-800 mt-1">
-                      {report.licenses.m365E5Assigned} / {report.licenses.m365E5Total}
-                    </div>
+                </div>
+
+                <div className="border border-slate-200 rounded-xl overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200">
+                      <tr>
+                        <th className="py-2.5 px-3">Nama User</th>
+                        <th className="py-2.5 px-3">Departemen</th>
+                        <th className="py-2.5 px-3">Lisensi yang Ditugaskan</th>
+                        <th className="py-2.5 px-3">Tanggal Penugasan</th>
+                        <th className="py-2.5 px-3">Ref Tiket</th>
+                        <th className="py-2.5 px-3">Petugas</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {userAssignments.length === 0 ? (
+                        <tr>
+                          <td colSpan={6} className="py-4 text-center text-slate-400 font-mono">
+                            Tidak ada penugasan lisensi baru pada shift ini.
+                          </td>
+                        </tr>
+                      ) : (
+                        userAssignments.map(asg => (
+                          <tr key={asg.id} className="hover:bg-slate-50">
+                            <td className="py-2.5 px-3 font-semibold text-slate-900">{asg.userName}</td>
+                            <td className="py-2.5 px-3 text-slate-600">{asg.department}</td>
+                            <td className="py-2.5 px-3">
+                              <span className="font-mono text-blue-700 font-bold bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
+                                {asg.softwareName}
+                              </span>
+                            </td>
+                            <td className="py-2.5 px-3 font-mono text-slate-500">{asg.assignedDate}</td>
+                            <td className="py-2.5 px-3 font-mono text-slate-500">{asg.ticketRef}</td>
+                            <td className="py-2.5 px-3 text-slate-600">{asg.assignedBy}</td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* New Purchases */}
+              <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-2xs space-y-3">
+                <div className="flex items-center justify-between pb-2 border-b border-slate-200">
+                  <div className="flex items-center gap-2">
+                    <ShoppingCart className="w-4 h-4 text-blue-700" />
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900">
+                      3. Pembelian Software Baru kepada User ({purchases.length} Pembelian)
+                    </h3>
                   </div>
-                  <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
-                    <span className="text-slate-500 font-medium block">AutoCAD Floating AEC</span>
-                    <div className="text-lg font-bold font-mono text-blue-800 mt-1">
-                      {report.licenses.autocadFloatingInUse} / {report.licenses.autocadFloatingTotal}
-                    </div>
-                  </div>
+                </div>
+
+                <div className="border border-slate-200 rounded-xl overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200">
+                      <tr>
+                        <th className="py-2.5 px-3">Software</th>
+                        <th className="py-2.5 px-3">Pemohon / Departemen</th>
+                        <th className="py-2.5 px-3">Jumlah Seats</th>
+                        <th className="py-2.5 px-3">No. PO</th>
+                        <th className="py-2.5 px-3">Vendor</th>
+                        <th className="py-2.5 px-3">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 font-mono">
+                      {purchases.length === 0 ? (
+                        <tr>
+                          <td colSpan={6} className="py-4 text-center text-slate-400 font-mono font-sans">
+                            Tidak ada transaksi pembelian software baru pada shift ini.
+                          </td>
+                        </tr>
+                      ) : (
+                        purchases.map(pur => (
+                          <tr key={pur.id} className="hover:bg-slate-50 font-sans">
+                            <td className="py-2.5 px-3 font-semibold text-slate-900">{pur.softwareName}</td>
+                            <td className="py-2.5 px-3 text-slate-600">{pur.targetUser} ({pur.department})</td>
+                            <td className="py-2.5 px-3 font-mono font-bold text-slate-800">{pur.quantity} Seats</td>
+                            <td className="py-2.5 px-3 font-mono text-slate-600">{pur.poNumber}</td>
+                            <td className="py-2.5 px-3 text-slate-600">{pur.vendor}</td>
+                            <td className="py-2.5 px-3">
+                              <span className="font-mono text-[10px] px-2 py-0.5 rounded-full font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                {pur.status}
+                              </span>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
                 </div>
               </div>
             </div>
           )}
 
-          {/* TAB 4: AUDIT TRAIL */}
+          {/* TAB 5: AUDIT TRAIL */}
           {activeTab === 'AUDIT' && (
             <div className="space-y-4">
               <div className="flex items-center justify-between text-xs text-slate-600 pb-2 border-b border-slate-200">
-                <span className="font-semibold">Cryptographic Audit Log &amp; Event Sequence (ISO 27001 Requirement)</span>
+                <span className="font-semibold">Cryptographic Audit Log &amp; Event Sequence</span>
                 <span className="font-mono text-blue-700 font-bold">Immutable Ledger</span>
               </div>
 
               <div className="relative pl-6 border-l-2 border-slate-200 space-y-6 my-2">
                 {report.auditTrail.map((entry, idx) => (
                   <div key={idx} className="relative group">
-                    <div className="absolute -left-[31px] top-0.5 w-3.5 h-3.5 rounded-full bg-white border-2 border-blue-600 group-hover:bg-blue-600 transition-colors" />
-                    <div className="text-xs">
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono font-bold text-slate-900">{entry.action}</span>
-                        <span className="text-[11px] font-mono text-slate-400">· {entry.timestamp}</span>
-                      </div>
-                      <div className="text-[11px] text-slate-500 font-mono mt-0.5">
-                        Actor: {entry.actorName} ({entry.actorRole} · {entry.actorBadge})
-                      </div>
-                      <div className="text-xs text-slate-700 mt-1 bg-white p-2.5 rounded-lg border border-slate-200">
-                        {entry.details}
-                      </div>
+                    <div className="absolute -left-[31px] top-1 w-3.5 h-3.5 rounded-full bg-blue-600 border-2 border-white shadow-xs" />
+                    <div className="text-[11px] font-mono text-slate-500 mb-0.5">{entry.timestamp}</div>
+                    <div className="text-xs font-bold text-slate-900 flex items-center gap-2">
+                      <span>{entry.action}</span>
+                      <span className="text-[10px] font-mono px-2 py-0.2 rounded bg-slate-100 text-slate-600 border border-slate-200 font-normal">
+                        by {entry.actorName} ({entry.actorRole})
+                      </span>
                     </div>
+                    <p className="text-xs text-slate-600 mt-1 leading-relaxed bg-slate-50 p-2.5 rounded-lg border border-slate-200 font-mono">
+                      {entry.details}
+                    </p>
                   </div>
                 ))}
               </div>
             </div>
           )}
 
-          {/* Superior Review Section (Only shown when pending review) */}
-          {isPendingSuperiorReview && (
-            <div className="rounded-xl border border-amber-300 bg-amber-50/40 p-5 space-y-4 shadow-xs print:hidden">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <PenTool className="w-5 h-5 text-amber-700" />
-                  <div>
-                    <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider">
-                      Superior Approval &amp; E-Signature Review (PRD Step 5)
-                    </h3>
-                    <p className="text-xs text-slate-600 mt-0.5">
-                      Review all ticket metrics, server health, and meeting room inspection proofs before applying digital validation.
-                    </p>
-                  </div>
-                </div>
-                {!isSuperior && (
-                  <span className="text-[11px] font-mono px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 font-medium border border-amber-200">
-                    Switch to {teamMembers.find(m => m.role === 'ICT_MANAGER')?.name ? `Superior ${teamMembers.find(m => m.role === 'ICT_MANAGER')?.name}` : 'Superior / ICT Manager'} in Top Bar to Sign
-                  </span>
-                )}
+          {/* Superior E-Signature & Approval Section (Interactive if pending review) */}
+          {isPendingSuperiorReview && isSuperior && (
+            <div className="rounded-xl border border-blue-300 bg-blue-50/50 p-5 space-y-4 shadow-sm print:hidden">
+              <div className="flex items-center gap-2 text-xs font-bold text-blue-900 uppercase tracking-wider">
+                <PenTool className="w-4 h-4 text-blue-700" />
+                <span>Superior Formal Approval &amp; E-Signature Validation</span>
               </div>
 
-              {isSuperior ? (
-                <form onSubmit={handleSuperiorAction} className="space-y-4 pt-2">
-                  <div className="flex items-center gap-3">
-                    <label className="text-xs font-bold text-slate-700">Decision:</label>
-                    <div className="flex items-center gap-2">
+              <form onSubmit={handleSuperiorAction} className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-xs font-semibold text-slate-800 block mb-1">
+                      Approval Decision *
+                    </label>
+                    <div className="grid grid-cols-2 gap-2">
                       <button
                         type="button"
                         onClick={() => setManagerDecision('APPROVED')}
-                        className={`px-3.5 py-1.5 text-xs font-semibold rounded-lg flex items-center gap-1.5 transition-colors ${
+                        className={`p-2.5 text-xs font-semibold rounded-lg border transition-all ${
                           managerDecision === 'APPROVED'
-                            ? 'bg-emerald-700 text-white shadow-xs'
-                            : 'bg-white text-slate-600 hover:text-slate-900 border border-slate-300'
+                            ? 'bg-emerald-600 text-white border-emerald-700 shadow-2xs font-bold'
+                            : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-100'
                         }`}
                       >
-                        <CheckCircle2 className="w-3.5 h-3.5" />
-                        Approve Report
+                        ✓ APPROVE Report
                       </button>
                       <button
                         type="button"
                         onClick={() => setManagerDecision('REJECTED')}
-                        className={`px-3.5 py-1.5 text-xs font-semibold rounded-lg flex items-center gap-1.5 transition-colors ${
+                        className={`p-2.5 text-xs font-semibold rounded-lg border transition-all ${
                           managerDecision === 'REJECTED'
-                            ? 'bg-rose-700 text-white shadow-xs'
-                            : 'bg-white text-slate-600 hover:text-slate-900 border border-slate-300'
+                            ? 'bg-rose-600 text-white border-rose-700 shadow-2xs font-bold'
+                            : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-100'
                         }`}
                       >
-                        <XCircle className="w-3.5 h-3.5" />
-                        Reject (Require Revision)
+                        ✕ Request Revision
                       </button>
                     </div>
-                  </div>
 
-                  {/* Mandatory Feedback */}
-                  <div>
-                    <div className="flex items-center justify-between mb-1">
-                      <label className="text-xs font-bold text-slate-700">
-                        Superior Feedback &amp; Operational Evaluation
+                    <div className="mt-3">
+                      <label className="text-xs font-semibold text-slate-800 block mb-1">
+                        Reviewer Feedback &amp; Directives (Mandatory) *
                       </label>
-                      <span className="text-[11px] text-rose-600 font-semibold">*Mandatory Field</span>
+                      <textarea
+                        rows={3}
+                        required
+                        placeholder="Provide directives or comments regarding shift operational quality..."
+                        value={managerComments}
+                        onChange={e => setManagerComments(e.target.value)}
+                        className="w-full bg-white border border-slate-300 rounded-lg p-2.5 text-xs text-slate-900 focus:outline-none focus:border-blue-600"
+                      />
                     </div>
-                    <textarea
-                      rows={3}
-                      value={managerComments}
-                      onChange={e => setManagerComments(e.target.value)}
-                      placeholder="e.g. Operations reviewed. All physical inspection proofs verified in Maleo and Tarsius rooms. Proceed with shift handover..."
-                      className="w-full bg-white border border-slate-300 rounded-lg p-3 text-xs text-slate-900 focus:outline-none focus:border-blue-600 font-sans"
-                      required
-                    />
                   </div>
 
-                  {/* Mandatory Digital Signature Canvas */}
-                  <DigitalSignaturePad
-                    onSignatureChange={dataUrl => setSignatureDataUrl(dataUrl)}
-                    required
-                  />
-
-                  <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-200">
-                    <button
-                      type="button"
-                      onClick={closeModal}
-                      className="px-4 py-2 text-xs font-semibold text-slate-600 hover:text-slate-900 bg-white border border-slate-300 rounded-lg"
-                    >
-                      Close
-                    </button>
-                    <button
-                      type="submit"
-                      disabled={isSubmittingReview}
-                      className={`px-4 py-2 text-xs font-semibold text-white rounded-lg flex items-center gap-1.5 shadow-xs transition-colors ${
-                        managerDecision === 'APPROVED'
-                          ? 'bg-emerald-700 hover:bg-emerald-800'
-                          : 'bg-rose-700 hover:bg-rose-800'
-                      }`}
-                    >
-                      <ShieldCheck className="w-4 h-4" />
-                      {managerDecision === 'APPROVED' ? 'Affix E-Signature & Approve' : 'Affix E-Signature & Reject'}
-                    </button>
+                  <div>
+                    <label className="text-xs font-semibold text-slate-800 block mb-1">
+                      Digital Signature Authorization (Mandatory) *
+                    </label>
+                    <DigitalSignaturePad onSignatureChange={(dataUrl: string | null) => setSignatureDataUrl(dataUrl)} />
                   </div>
-                </form>
-              ) : (
-                <div className="p-3.5 rounded-lg bg-white border border-slate-200 text-xs text-slate-600 flex items-center justify-between">
-                  <span>Currently logged in as Helpdesk Engineer ({currentUser.name}). E-Signature sign-off is restricted to Superior / ICT Manager or IT Administrator.</span>
                 </div>
-              )}
+
+                <div className="flex items-center justify-end gap-3 pt-3 border-t border-blue-200">
+                  <button
+                    type="submit"
+                    disabled={isSubmittingReview || !signatureDataUrl}
+                    className="px-5 py-2 text-xs font-bold text-white bg-blue-700 hover:bg-blue-800 disabled:opacity-50 disabled:pointer-events-none rounded-lg shadow-sm transition-colors flex items-center gap-2"
+                  >
+                    <ShieldCheck className="w-4 h-4" />
+                    Process &amp; Certify Signature
+                  </button>
+                </div>
+              </form>
             </div>
           )}
         </div>
 
         {/* Modal Footer */}
-        <div className="px-6 py-3.5 border-t border-slate-200 flex items-center justify-between bg-slate-50/90 rounded-b-2xl shrink-0 print:hidden">
-          <div className="text-xs text-slate-500 font-mono">
-            Document ID: {report.id}
+        <div className="px-6 py-3.5 border-t border-slate-200 flex items-center justify-between bg-slate-50/80 rounded-b-2xl shrink-0 print:hidden">
+          <div className="text-xs font-mono text-slate-500">
+            Document Record ID: <span className="text-slate-800 font-semibold">{report.id}</span>
           </div>
           <button
             type="button"
             onClick={closeModal}
-            className="px-4 py-2 text-xs font-semibold text-slate-700 hover:text-slate-900 bg-white border border-slate-300 hover:bg-slate-100 rounded-lg transition-colors"
+            className="px-4 py-2 text-xs font-semibold text-slate-700 hover:text-slate-900 rounded-lg bg-white border border-slate-300 hover:bg-slate-100 transition-colors"
           >
-            Dismiss
+            Close
           </button>
         </div>
-      </div>
 
-      {/* Expanded Photo Lightbox */}
-      {expandedPhoto && (
-        <div
-          className="fixed inset-0 z-70 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 cursor-zoom-out"
-          onClick={() => setExpandedPhoto(null)}
-        >
-          <div className="relative max-w-4xl max-h-[85vh] bg-white rounded-xl overflow-hidden p-2 border border-slate-300 shadow-2xl">
-            <img
-              src={expandedPhoto}
-              alt="Inspection enlarged"
-              className="max-h-[80vh] w-auto object-contain mx-auto rounded"
-            />
-            <div className="text-center text-xs text-slate-600 pt-2 font-mono">
-              PT Donggi-Senoro LNG High Resolution Physical Inspection Archive · Click to close
+        {/* Fullscreen Photo Modal */}
+        {expandedPhoto && (
+          <div
+            className="fixed inset-0 z-70 bg-black/85 flex items-center justify-center p-4"
+            onClick={() => setExpandedPhoto(null)}
+          >
+            <div className="relative max-w-4xl max-h-[90vh] bg-slate-900 rounded-xl overflow-hidden border border-slate-700 p-2 shadow-2xl">
+              <button
+                type="button"
+                onClick={() => setExpandedPhoto(null)}
+                className="absolute top-4 right-4 p-2 bg-black/60 hover:bg-black text-white rounded-full transition-colors z-10"
+              >
+                <X className="w-5 h-5" />
+              </button>
+              <img
+                src={expandedPhoto}
+                alt="Enlarged inspection proof"
+                className="max-h-[85vh] max-w-full object-contain rounded"
+              />
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 };

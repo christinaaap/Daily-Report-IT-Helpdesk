@@ -280,7 +280,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [servers, setServers] = useState<ServerCheck[]>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY_SERVERS);
-      if (saved) return JSON.parse(saved);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
     } catch {
       // ignore
     }
@@ -1005,7 +1008,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setDispatchedReminderDates({});
     setManualSchedules({});
     setTeamMembers(INITIAL_TEAM_MEMBERS);
-    setServers([]);
+    setServers(INITIAL_SERVERS);
     setMeetingRooms([]);
     setCompanyAssets([]);
     setSystemAuditLogs([]);

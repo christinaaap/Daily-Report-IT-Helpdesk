@@ -48,6 +48,20 @@ export interface TeamMember {
 
 export type ReportStatus = 'PENDING' | 'SUBMITTED' | 'APPROVED' | 'REJECTED';
 
+export type TicketCategory = 'Helpdesk' | 'MES' | 'ERP' | 'Network/Telecom/Radio';
+
+export interface SLATicketDetail {
+  id: string;
+  ticketNumber: string;
+  subject: string;
+  requester: string;
+  category: TicketCategory;
+  overSlaTime: string; // e.g. "2 Jam 30 Menit", "+4 Jam"
+  slaStatus: 'SLA_BREACHED' | 'SLA_AT_RISK';
+  technician: string;
+  notes?: string;
+}
+
 export interface TicketMetrics {
   open: number;
   onHold: number;
@@ -61,6 +75,7 @@ export interface TicketMetrics {
     erp: number;
     networkTelecomRadio: number;
   };
+  slaTickets?: SLATicketDetail[];
 }
 
 export interface SLAReminderItem {
@@ -84,6 +99,41 @@ export interface ServerCheck {
   notes?: string;
 }
 
+export interface LicenseInventoryItem {
+  id: string;
+  softwareName: string;
+  category: 'MS365' | 'OTHERS';
+  totalLicenses: number;
+  assignedLicenses: number;
+  availableLicenses: number;
+  vendor?: string;
+  notes?: string;
+}
+
+export interface LicenseAssignment {
+  id: string;
+  userName: string;
+  department: string;
+  softwareName: string;
+  assignedDate: string;
+  ticketRef: string;
+  assignedBy?: string;
+  notes?: string;
+}
+
+export interface SoftwarePurchase {
+  id: string;
+  softwareName: string;
+  targetUser: string;
+  department: string;
+  quantity: number;
+  poNumber: string;
+  vendor: string;
+  purchaseDate: string;
+  status: 'ACTIVE' | 'DEPLOYED' | 'PENDING_INSTALL';
+  notes?: string;
+}
+
 export interface LicenseStatus {
   m365E3Total: number;
   m365E3Assigned: number;
@@ -91,6 +141,9 @@ export interface LicenseStatus {
   m365E5Assigned: number;
   autocadFloatingTotal: number;
   autocadFloatingInUse: number;
+  items?: LicenseInventoryItem[];
+  userAssignments?: LicenseAssignment[];
+  purchases?: SoftwarePurchase[];
   expirations: {
     software: string;
     seats: number;
@@ -151,6 +204,7 @@ export interface DailyReport {
   
   // Report sections
   tickets: TicketMetrics;
+  slaTickets?: SLATicketDetail[];
   slaReminders: SLAReminderItem[];
   servers: ServerCheck[];
   licenses: LicenseStatus;
