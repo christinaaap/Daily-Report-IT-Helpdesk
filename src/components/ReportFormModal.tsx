@@ -61,44 +61,32 @@ export const ReportFormModal: React.FC<ReportFormModalProps> = ({ date }) => {
     currentUser,
     showToast,
     servers: contextServers,
-    addServer,
     meetingRooms: contextMeetingRooms,
+    companyAssets,
   } = useApp();
 
   // Active form section tab (6 sections as requested):
   // 1. Tickets & SLA * | 2. Server Check * | 3. MS365 and Software Others | 4. Physical Check Meeting Room | 5. Mailbox and CrowdStrike | 6. Summary
   const [activeSection, setActiveSection] = useState<FormSection>('TICKETS');
 
-  // Form State - Section 1
+  // Form State - Section 1 (Clean baseline: diisi langsung oleh Duty Engineer)
   const [tickets, setTickets] = useState<TicketMetrics>({
-    open: 18,
-    onHold: 3,
-    pendingUser: 7,
-    closedToday: 24,
+    open: 0,
+    onHold: 0,
+    pendingUser: 0,
+    closedToday: 0,
     slaBreached: 0,
-    slaAtRisk: 1,
+    slaAtRisk: 0,
     categoryBreakdown: {
-      helpdesk: 14,
-      mes: 3,
-      erp: 9,
-      networkTelecomRadio: 6,
+      helpdesk: 0,
+      mes: 0,
+      erp: 0,
+      networkTelecomRadio: 0,
     },
   });
 
   // Section 1: Detailed SLA Breached & At Risk Tickets
-  const [slaTickets, setSlaTickets] = useState<SLATicketDetail[]>([
-    {
-      id: 'sla-init-1',
-      ticketNumber: 'INC-202610-042',
-      subject: 'SAP S/4HANA PO Release Workflow Delayed',
-      requester: 'Supply Chain Desk Site Uso',
-      category: 'ERP',
-      overSlaTime: '1 Jam 40 Menit',
-      slaStatus: 'SLA_AT_RISK',
-      technician: currentUser.name,
-      notes: 'Investigating background spool memory queue',
-    },
-  ]);
+  const [slaTickets, setSlaTickets] = useState<SLATicketDetail[]>([]);
   const [slaFilter, setSlaFilter] = useState<'ALL' | 'SLA_BREACHED' | 'SLA_AT_RISK'>('ALL');
 
   // Auto-sync SLA tickets count when slaBreached or slaAtRisk changes
@@ -136,13 +124,41 @@ export const ReportFormModal: React.FC<ReportFormModalProps> = ({ date }) => {
     return INITIAL_SERVERS.map(s => ({ ...s }));
   });
 
-  // Section 3: MS365 dan Software Others state
-  const [licenses, setLicenses] = useState<LicenseStatus>(() => ({
-    ...INITIAL_LICENSES,
-    items: INITIAL_LICENSES.items ? [...INITIAL_LICENSES.items] : [],
-    userAssignments: INITIAL_LICENSES.userAssignments ? [...INITIAL_LICENSES.userAssignments] : [],
-    purchases: INITIAL_LICENSES.purchases ? [...INITIAL_LICENSES.purchases] : [],
-  }));
+  // Section 3: MS365 and Software Others state (Dynamically initialized from Infrastructure Fleet companyAssets)
+  const [licenses, setLicenses] = useState<LicenseStatus>(() => {
+    // If software or assets are registered in Infrastructure Fleet, map them into the daily report's license pool
+    const assetItems: LicenseInventoryItem[] = (companyAssets || []).map(asset => {
+      const isM365 =
+        asset.name.toLowerCase().includes('365') ||
+        asset.name.toLowerCase().includes('office') ||
+        asset.name.toLowerCase().includes('microsoft');
+      const total = Number(asset.capacityTotal) || 0;
+      const assigned = Number(asset.capacityUsed) || 0;
+      return {
+        id: asset.id,
+        softwareName: asset.name,
+        category: isM365 ? 'MS365' : 'OTHERS',
+        totalLicenses: total,
+        assignedLicenses: assigned,
+        availableLicenses: Math.max(0, total - assigned),
+        vendor: asset.vendor || '',
+        notes: asset.notes || (asset.customCategory ? `Kategori: ${asset.customCategory}` : ''),
+      };
+    });
+
+    return {
+      m365E3Total: 0,
+      m365E3Assigned: 0,
+      m365E5Total: 0,
+      m365E5Assigned: 0,
+      autocadFloatingTotal: 0,
+      autocadFloatingInUse: 0,
+      items: assetItems,
+      userAssignments: [],
+      purchases: [],
+      expirations: [],
+    };
+  });
 
   const [newAssignment, setNewAssignment] = useState<{
     userName: string;
@@ -150,13 +166,13 @@ export const ReportFormModal: React.FC<ReportFormModalProps> = ({ date }) => {
     softwareName: string;
     ticketRef: string;
     notes: string;
-  }>({
+  }>(() => ({
     userName: '',
     department: 'Site Operations',
-    softwareName: 'Microsoft 365 E3',
+    softwareName: companyAssets && companyAssets.length > 0 ? companyAssets[0].name : '',
     ticketRef: '',
     notes: '',
-  });
+  }));
 
   // Section 5: Mailbox and CrowdStrike state
   const [mailboxMetrics, setMailboxMetrics] = useState<MailboxCrowdstrikeMetrics>({
@@ -199,13 +215,9 @@ export const ReportFormModal: React.FC<ReportFormModalProps> = ({ date }) => {
     }))
   );
 
-  // Section 6: Handover Notes
-  const [executiveSummary, setExecutiveSummary] = useState(
-    'Daily shift operations completed nominally. All meeting rooms physically inspected and verified. Critical server nodes and services operating healthy.'
-  );
-  const [shiftHandoverNotes, setShiftHandoverNotes] = useState(
-    'Handover to incoming shift completed with zero blocking priority-1 issues.'
-  );
+  // Section 6: Handover Notes (Clean baseline)
+  const [executiveSummary, setExecutiveSummary] = useState('');
+  const [shiftHandoverNotes, setShiftHandoverNotes] = useState('');
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
@@ -294,8 +306,16 @@ export const ReportFormModal: React.FC<ReportFormModalProps> = ({ date }) => {
 
   const handleAddAssignment = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!licenses.items || licenses.items.length === 0) {
+      showToast('Belum ada software/lisensi yang terdaftar di Infrastructure Fleet.', 'warning');
+      return;
+    }
     if (!newAssignment.userName.trim()) {
       showToast('Nama user penerima lisensi wajib diisi.', 'error');
+      return;
+    }
+    if (!newAssignment.softwareName) {
+      showToast('Pilih software lisensi yang akan diassign.', 'error');
       return;
     }
     const item: LicenseAssignment = {
@@ -315,7 +335,7 @@ export const ReportFormModal: React.FC<ReportFormModalProps> = ({ date }) => {
     setNewAssignment({
       userName: '',
       department: 'Site Operations',
-      softwareName: 'Microsoft 365 E3',
+      softwareName: licenses.items && licenses.items.length > 0 ? licenses.items[0].softwareName : '',
       ticketRef: '',
       notes: '',
     });
@@ -480,16 +500,16 @@ export const ReportFormModal: React.FC<ReportFormModalProps> = ({ date }) => {
       return;
     }
 
-    // Section 2 Validation (Required *)
-    if (servers.length === 0) {
+    // Section 2 Validation (Required * when servers are registered in fleet)
+    if (contextServers && contextServers.length > 0 && servers.length === 0) {
       showToast('Section 2 (Server Check *): Minimal harus terdapat 1 node server yang terverifikasi.', 'error');
       setActiveSection('SERVERS');
       setShowConfirmModal(false);
       return;
     }
 
-    // Section 4 Validation (Physical photos)
-    if (!isVtcComplete) {
+    // Section 4 Validation (Physical photos for registered rooms)
+    if (physicalInspections.length > 0 && !isVtcComplete) {
       showToast(
         `Physical Check Meeting Room: Mohon lampirkan foto bukti fisik untuk seluruh ${physicalInspections.length} ruang meeting sebelum submit.`,
         'error'
@@ -1463,113 +1483,140 @@ export const ReportFormModal: React.FC<ReportFormModalProps> = ({ date }) => {
                   </span>
                 </div>
 
-                {/* Microsoft 365 Category */}
-                <div className="space-y-2">
-                  <span className="text-xs font-bold text-blue-900 bg-blue-50 px-2 py-0.5 rounded border border-blue-200 inline-block font-mono">
-                    Microsoft 365 Subscriptions
-                  </span>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                    {ms365Items.map(item => {
-                      const avail = item.totalLicenses - item.assignedLicenses;
-                      return (
-                        <div key={item.id} className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/70 space-y-2 text-xs">
-                          <div className="flex items-center justify-between">
-                            <span className="font-bold text-slate-900 truncate">{item.softwareName}</span>
-                            <span
-                              className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold ${
-                                avail > 2
-                                  ? 'bg-emerald-100 text-emerald-800'
-                                  : avail > 0
-                                  ? 'bg-amber-100 text-amber-800'
-                                  : 'bg-rose-100 text-rose-800'
-                              }`}
-                            >
-                              {avail} Available
-                            </span>
-                          </div>
-
-                          <div className="grid grid-cols-2 gap-2 text-[11px] pt-1">
-                            <div>
-                              <label className="text-slate-500 block text-[10px]">Total Terbeli</label>
-                              <input
-                                type="number"
-                                min={0}
-                                value={item.totalLicenses}
-                                onChange={e => handleUpdateInventoryItem(item.id, Number(e.target.value), item.assignedLicenses)}
-                                className="w-full bg-white border border-slate-300 rounded px-2 py-1 font-mono text-slate-900 focus:outline-none focus:border-blue-600 text-xs mt-0.5"
-                              />
-                            </div>
-                            <div>
-                              <label className="text-slate-500 block text-[10px]">Assigned (Terpakai)</label>
-                              <input
-                                type="number"
-                                min={0}
-                                value={item.assignedLicenses}
-                                onChange={e => handleUpdateInventoryItem(item.id, item.totalLicenses, Number(e.target.value))}
-                                className="w-full bg-white border border-slate-300 rounded px-2 py-1 font-mono text-slate-900 focus:outline-none focus:border-blue-600 text-xs mt-0.5"
-                              />
-                            </div>
-                          </div>
-                          <div className="text-[10px] text-slate-400 font-mono truncate">{item.notes}</div>
-                        </div>
-                      );
-                    })}
+                {(!licenses.items || licenses.items.length === 0) ? (
+                  <div className="p-8 rounded-xl border border-dashed border-slate-300 bg-slate-50/70 text-center space-y-2.5">
+                    <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center mx-auto text-slate-400">
+                      <FileKey className="w-5 h-5" />
+                    </div>
+                    <h4 className="text-xs font-bold text-slate-800">
+                      Belum Ada Software / Lisensi Terdaftar di Infrastructure Fleet
+                    </h4>
+                    <p className="text-[11px] text-slate-500 max-w-md mx-auto leading-relaxed">
+                      Daftar software dan lisensi belum ditambahkan pada menu <strong className="text-slate-700">Infrastructure Fleet</strong>. Silakan tambahkan aset software (seperti Microsoft 365, AutoCAD, SAP, dll.) melalui menu Infrastructure Fleet jika ingin memantau kuota dan ketersediaan lisensi harian.
+                    </p>
+                    <div className="pt-1">
+                      <span className="inline-flex items-center gap-1 text-[11px] font-medium text-purple-700 bg-purple-50 px-2.5 py-1 rounded-md border border-purple-200">
+                        <Info className="w-3.5 h-3.5" />
+                        Bagian ini bersifat opsional / tidak wajib diisi untuk membuat laporan harian.
+                      </span>
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  <>
+                    {/* Microsoft 365 Category */}
+                    {ms365Items.length > 0 && (
+                      <div className="space-y-2">
+                        <span className="text-xs font-bold text-blue-900 bg-blue-50 px-2 py-0.5 rounded border border-blue-200 inline-block font-mono">
+                          Microsoft 365 Subscriptions
+                        </span>
 
-                {/* Software Others Category */}
-                <div className="space-y-2 pt-2">
-                  <span className="text-xs font-bold text-slate-800 bg-slate-100 px-2 py-0.5 rounded border border-slate-200 inline-block font-mono">
-                    Software Others (Engineering &amp; Enterprise Applications)
-                  </span>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                          {ms365Items.map(item => {
+                            const avail = item.totalLicenses - item.assignedLicenses;
+                            return (
+                              <div key={item.id} className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/70 space-y-2 text-xs">
+                                <div className="flex items-center justify-between">
+                                  <span className="font-bold text-slate-900 truncate">{item.softwareName}</span>
+                                  <span
+                                    className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold ${
+                                      avail > 2
+                                        ? 'bg-emerald-100 text-emerald-800'
+                                        : avail > 0
+                                        ? 'bg-amber-100 text-amber-800'
+                                        : 'bg-rose-100 text-rose-800'
+                                    }`}
+                                  >
+                                    {avail} Available
+                                  </span>
+                                </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                    {otherLicenseItems.map(item => {
-                      const avail = item.totalLicenses - item.assignedLicenses;
-                      return (
-                        <div key={item.id} className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/70 space-y-2 text-xs">
-                          <div className="flex items-center justify-between">
-                            <span className="font-bold text-slate-900 truncate">{item.softwareName}</span>
-                          </div>
-                          <div className="flex items-center justify-between text-[11px] font-mono">
-                            <span className="text-slate-500">Available:</span>
-                            <span
-                              className={`px-1.5 py-0.5 rounded font-bold ${
-                                avail > 0 ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
-                              }`}
-                            >
-                              {avail} Seats
-                            </span>
-                          </div>
-
-                          <div className="grid grid-cols-2 gap-2 text-[11px]">
-                            <div>
-                              <label className="text-slate-500 block text-[10px]">Total</label>
-                              <input
-                                type="number"
-                                min={0}
-                                value={item.totalLicenses}
-                                onChange={e => handleUpdateInventoryItem(item.id, Number(e.target.value), item.assignedLicenses)}
-                                className="w-full bg-white border border-slate-300 rounded px-2 py-1 font-mono text-slate-900 text-xs mt-0.5"
-                              />
-                            </div>
-                            <div>
-                              <label className="text-slate-500 block text-[10px]">In Use</label>
-                              <input
-                                type="number"
-                                min={0}
-                                value={item.assignedLicenses}
-                                onChange={e => handleUpdateInventoryItem(item.id, item.totalLicenses, Number(e.target.value))}
-                                className="w-full bg-white border border-slate-300 rounded px-2 py-1 font-mono text-slate-900 text-xs mt-0.5"
-                              />
-                            </div>
-                          </div>
+                                <div className="grid grid-cols-2 gap-2 text-[11px] pt-1">
+                                  <div>
+                                    <label className="text-slate-500 block text-[10px]">Total Terbeli</label>
+                                    <input
+                                      type="number"
+                                      min={0}
+                                      value={item.totalLicenses}
+                                      onChange={e => handleUpdateInventoryItem(item.id, Number(e.target.value), item.assignedLicenses)}
+                                      className="w-full bg-white border border-slate-300 rounded px-2 py-1 font-mono text-slate-900 focus:outline-none focus:border-blue-600 text-xs mt-0.5"
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="text-slate-500 block text-[10px]">Assigned (Terpakai)</label>
+                                    <input
+                                      type="number"
+                                      min={0}
+                                      value={item.assignedLicenses}
+                                      onChange={e => handleUpdateInventoryItem(item.id, item.totalLicenses, Number(e.target.value))}
+                                      className="w-full bg-white border border-slate-300 rounded px-2 py-1 font-mono text-slate-900 focus:outline-none focus:border-blue-600 text-xs mt-0.5"
+                                    />
+                                  </div>
+                                </div>
+                                {item.notes && <div className="text-[10px] text-slate-400 font-mono truncate">{item.notes}</div>}
+                              </div>
+                            );
+                          })}
                         </div>
-                      );
-                    })}
-                  </div>
-                </div>
+                      </div>
+                    )}
+
+                    {/* Software Others Category */}
+                    {otherLicenseItems.length > 0 && (
+                      <div className="space-y-2 pt-2">
+                        <span className="text-xs font-bold text-slate-800 bg-slate-100 px-2 py-0.5 rounded border border-slate-200 inline-block font-mono">
+                          Software Others (Engineering &amp; Enterprise Applications)
+                        </span>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                          {otherLicenseItems.map(item => {
+                            const avail = item.totalLicenses - item.assignedLicenses;
+                            return (
+                              <div key={item.id} className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/70 space-y-2 text-xs">
+                                <div className="flex items-center justify-between">
+                                  <span className="font-bold text-slate-900 truncate">{item.softwareName}</span>
+                                </div>
+                                <div className="flex items-center justify-between text-[11px] font-mono">
+                                  <span className="text-slate-500">Available:</span>
+                                  <span
+                                    className={`px-1.5 py-0.5 rounded font-bold ${
+                                      avail > 0 ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
+                                    }`}
+                                  >
+                                    {avail} Seats
+                                  </span>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-2 text-[11px]">
+                                  <div>
+                                    <label className="text-slate-500 block text-[10px]">Total</label>
+                                    <input
+                                      type="number"
+                                      min={0}
+                                      value={item.totalLicenses}
+                                      onChange={e => handleUpdateInventoryItem(item.id, Number(e.target.value), item.assignedLicenses)}
+                                      className="w-full bg-white border border-slate-300 rounded px-2 py-1 font-mono text-slate-900 text-xs mt-0.5"
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="text-slate-500 block text-[10px]">In Use</label>
+                                    <input
+                                      type="number"
+                                      min={0}
+                                      value={item.assignedLicenses}
+                                      onChange={e => handleUpdateInventoryItem(item.id, item.totalLicenses, Number(e.target.value))}
+                                      className="w-full bg-white border border-slate-300 rounded px-2 py-1 font-mono text-slate-900 text-xs mt-0.5"
+                                    />
+                                  </div>
+                                </div>
+                                {item.notes && <div className="text-[10px] text-slate-400 font-mono truncate">{item.notes}</div>}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
               </div>
 
               {/* SUBSECTION 2: LICENSE ASSIGNMENT TO NEW USER */}
@@ -1619,13 +1666,18 @@ export const ReportFormModal: React.FC<ReportFormModalProps> = ({ date }) => {
                       <select
                         value={newAssignment.softwareName}
                         onChange={e => setNewAssignment({ ...newAssignment, softwareName: e.target.value })}
-                        className="w-full bg-white border border-slate-300 rounded px-2.5 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-blue-600"
+                        disabled={!licenses.items || licenses.items.length === 0}
+                        className="w-full bg-white border border-slate-300 rounded px-2.5 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-blue-600 disabled:bg-slate-100 disabled:text-slate-400"
                       >
-                        {(licenses.items || []).map(item => (
-                          <option key={item.id} value={item.softwareName}>
-                            {item.softwareName} ({item.totalLicenses - item.assignedLicenses} sisa)
-                          </option>
-                        ))}
+                        {(!licenses.items || licenses.items.length === 0) ? (
+                          <option value="" disabled>Belum ada software di Infrastructure Fleet</option>
+                        ) : (
+                          licenses.items.map(item => (
+                            <option key={item.id} value={item.softwareName}>
+                              {item.softwareName} ({item.totalLicenses - item.assignedLicenses} sisa)
+                            </option>
+                          ))
+                        )}
                       </select>
                     </div>
 
@@ -1643,13 +1695,19 @@ export const ReportFormModal: React.FC<ReportFormModalProps> = ({ date }) => {
                     <div className="flex items-end">
                       <button
                         type="submit"
-                        className="w-full px-3 py-1.5 text-xs font-semibold text-white bg-emerald-700 hover:bg-emerald-800 rounded-lg shadow-xs transition-colors flex items-center justify-center gap-1.5"
+                        disabled={!licenses.items || licenses.items.length === 0}
+                        className="w-full px-3 py-1.5 text-xs font-semibold text-white bg-emerald-700 hover:bg-emerald-800 disabled:bg-slate-300 disabled:cursor-not-allowed rounded-lg shadow-xs transition-colors flex items-center justify-center gap-1.5"
                       >
                         <Plus className="w-3.5 h-3.5" />
                         Assign Lisensi
                       </button>
                     </div>
                   </div>
+                  {(!licenses.items || licenses.items.length === 0) && (
+                    <p className="text-[11px] text-slate-400 italic pt-0.5">
+                      * Penugasan lisensi memerlukan master data software yang telah terdaftar di Infrastructure Fleet.
+                    </p>
+                  )}
                 </form>
 
                 {/* DESKTOP: Table of assignments (hidden md:block) */}

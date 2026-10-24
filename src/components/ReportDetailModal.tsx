@@ -910,58 +910,69 @@ export const ReportDetailModal: React.FC<ReportDetailModalProps> = ({ reportId }
                   <span className="text-[11px] text-slate-500 font-mono">Available = Total - Assigned</span>
                 </div>
 
-                {/* Microsoft 365 Section */}
-                <div className="space-y-2">
-                  <span className="text-xs font-bold text-blue-900 bg-blue-50 px-2 py-0.5 rounded border border-blue-200 font-mono inline-block">
-                    Microsoft 365 Subscriptions
-                  </span>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-                    {(ms365Items.length > 0 ? ms365Items : [
-                      { id: '1', softwareName: 'Microsoft 365 E3', totalLicenses: report.licenses.m365E3Total, assignedLicenses: report.licenses.m365E3Assigned },
-                      { id: '2', softwareName: 'Microsoft 365 E5', totalLicenses: report.licenses.m365E5Total, assignedLicenses: report.licenses.m365E5Assigned },
-                    ]).map(item => {
-                      const avail = item.totalLicenses - item.assignedLicenses;
-                      return (
-                        <div key={item.id} className="p-4 rounded-xl bg-slate-50 border border-slate-200">
-                          <span className="text-slate-600 font-bold block">{item.softwareName}</span>
-                          <div className="text-lg font-bold font-mono text-slate-900 mt-1">
-                            {item.assignedLicenses} / {item.totalLicenses} Assigned
-                          </div>
-                          <div className="text-[11px] text-emerald-700 font-semibold font-mono mt-1">
-                            {avail} Available Seats
-                          </div>
-                        </div>
-                      );
-                    })}
+                {(!report.licenses?.items || report.licenses.items.length === 0) ? (
+                  <div className="p-8 rounded-xl border border-dashed border-slate-300 bg-slate-50/70 text-center space-y-2">
+                    <FileKey className="w-8 h-8 text-slate-300 mx-auto" />
+                    <h4 className="text-xs font-bold text-slate-700">Tidak Ada Software / Lisensi Tercatat</h4>
+                    <p className="text-[11px] text-slate-500 max-w-md mx-auto">
+                      Tidak ada data lisensi perangkat lunak yang dikonfigurasi saat laporan ini dibuat.
+                    </p>
                   </div>
-                </div>
+                ) : (
+                  <>
+                    {/* Microsoft 365 Section */}
+                    {ms365Items.length > 0 && (
+                      <div className="space-y-2">
+                        <span className="text-xs font-bold text-blue-900 bg-blue-50 px-2 py-0.5 rounded border border-blue-200 font-mono inline-block">
+                          Microsoft 365 Subscriptions
+                        </span>
 
-                {/* Software Others Section */}
-                <div className="space-y-2 pt-2">
-                  <span className="text-xs font-bold text-slate-800 bg-slate-100 px-2 py-0.5 rounded border border-slate-200 font-mono inline-block">
-                    Software Others (Engineering &amp; Enterprise Apps)
-                  </span>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-                    {(otherItems.length > 0 ? otherItems : [
-                      { id: '3', softwareName: 'AutoCAD Floating AEC', totalLicenses: report.licenses.autocadFloatingTotal, assignedLicenses: report.licenses.autocadFloatingInUse },
-                    ]).map(item => {
-                      const avail = item.totalLicenses - item.assignedLicenses;
-                      return (
-                        <div key={item.id} className="p-4 rounded-xl bg-slate-50 border border-slate-200">
-                          <span className="text-slate-600 font-bold block">{item.softwareName}</span>
-                          <div className="text-lg font-bold font-mono text-slate-900 mt-1">
-                            {item.assignedLicenses} / {item.totalLicenses} In Use
-                          </div>
-                          <div className="text-[11px] text-blue-700 font-semibold font-mono mt-1">
-                            {avail} Floating Free
-                          </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                          {ms365Items.map(item => {
+                            const avail = item.totalLicenses - item.assignedLicenses;
+                            return (
+                              <div key={item.id} className="p-4 rounded-xl bg-slate-50 border border-slate-200">
+                                <span className="text-slate-600 font-bold block">{item.softwareName}</span>
+                                <div className="text-lg font-bold font-mono text-slate-900 mt-1">
+                                  {item.assignedLicenses} / {item.totalLicenses} Assigned
+                                </div>
+                                <div className="text-[11px] text-emerald-700 font-semibold font-mono mt-1">
+                                  {avail} Available Seats
+                                </div>
+                              </div>
+                            );
+                          })}
                         </div>
-                      );
-                    })}
-                  </div>
-                </div>
+                      </div>
+                    )}
+
+                    {/* Software Others Section */}
+                    {otherItems.length > 0 && (
+                      <div className="space-y-2 pt-2">
+                        <span className="text-xs font-bold text-slate-800 bg-slate-100 px-2 py-0.5 rounded border border-slate-200 font-mono inline-block">
+                          Software Others (Engineering &amp; Enterprise Apps)
+                        </span>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                          {otherItems.map(item => {
+                            const avail = item.totalLicenses - item.assignedLicenses;
+                            return (
+                              <div key={item.id} className="p-4 rounded-xl bg-slate-50 border border-slate-200">
+                                <span className="text-slate-600 font-bold block">{item.softwareName}</span>
+                                <div className="text-lg font-bold font-mono text-slate-900 mt-1">
+                                  {item.assignedLicenses} / {item.totalLicenses} In Use
+                                </div>
+                                <div className="text-[11px] text-blue-700 font-semibold font-mono mt-1">
+                                  {avail} Floating Free
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
               </div>
 
               {/* User Assignments */}

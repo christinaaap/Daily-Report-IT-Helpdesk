@@ -282,7 +282,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const saved = localStorage.getItem(STORAGE_KEY_SERVERS);
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed)) {
+          return parsed.filter(s => !['srv-01', 'srv-02', 'srv-03', 'srv-04', 'srv-05', 'srv-06'].includes(s.id));
+        }
       }
     } catch {
       // ignore
@@ -368,19 +370,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const saved = localStorage.getItem(STORAGE_KEY_REPORTS);
       if (saved) {
         const parsed: DailyReport[] = JSON.parse(saved);
-        const merged = [...parsed];
-        SEED_PAST_REPORTS.forEach(seed => {
-          if (!merged.some(r => r.reportDate === seed.reportDate)) {
-            merged.push(seed);
-          }
-        });
-        merged.sort((a, b) => b.reportDate.localeCompare(a.reportDate));
-        return merged;
+        const cleaned = parsed.filter(
+          r => !['DSLNG-REP-20261001-01', 'DSLNG-REP-20261002-01', 'DSLNG-REP-20261003-01', 'DSLNG-REP-20261004-01', 'DSLNG-REP-20261005-01', 'DSLNG-REP-20261006-01', 'DSLNG-REP-20261007-01', 'DSLNG-REP-20260929-01'].includes(r.id)
+        );
+        cleaned.sort((a, b) => b.reportDate.localeCompare(a.reportDate));
+        return cleaned;
       }
     } catch (e) {
       console.error('Failed to load local reports', e);
     }
-    return SEED_PAST_REPORTS;
+    return [];
   });
 
   // Shift schedules: completely clean without dummy prefilled data
