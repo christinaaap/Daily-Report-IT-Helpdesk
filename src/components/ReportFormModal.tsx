@@ -136,11 +136,6 @@ export const ReportFormModal: React.FC<ReportFormModalProps> = ({ date }) => {
     return INITIAL_SERVERS.map(s => ({ ...s }));
   });
 
-  const [isAddServerOpen, setIsAddServerOpen] = useState(false);
-  const [newServerName, setNewServerName] = useState('');
-  const [newServerLocation, setNewServerLocation] = useState('Site Uso Server Room');
-  const [newServerNotes, setNewServerNotes] = useState('');
-
   // Section 3: MS365 dan Software Others state
   const [licenses, setLicenses] = useState<LicenseStatus>(() => ({
     ...INITIAL_LICENSES,
@@ -191,21 +186,6 @@ export const ReportFormModal: React.FC<ReportFormModalProps> = ({ date }) => {
     brokenAssets: '',
     generalNotes: '',
   });
-
-  const [newInventorySoftware, setNewInventorySoftware] = useState<{
-    softwareName: string;
-    category: 'MS365' | 'OTHERS';
-    total: number;
-    assigned: number;
-    vendor: string;
-  }>({
-    softwareName: '',
-    category: 'OTHERS',
-    total: 10,
-    assigned: 5,
-    vendor: '',
-  });
-  const [showAddInventoryModal, setShowAddInventoryModal] = useState(false);
 
   // Section 4: Physical inspections (Meeting Rooms)
   const [physicalInspections, setPhysicalInspections] = useState<PhysicalInspectionItem[]>(() =>
@@ -292,26 +272,6 @@ export const ReportFormModal: React.FC<ReportFormModalProps> = ({ date }) => {
     setServers(prev => prev.map(s => (s.id === id ? { ...s, latencyMs } : s)));
   };
 
-  const handleQuickAddServer = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newServerName.trim()) {
-      showToast('Nama server wajib diisi.', 'error');
-      return;
-    }
-    const newSrvData = {
-      name: newServerName.trim(),
-      location: newServerLocation.trim(),
-      status: 'ONLINE' as const,
-      notes: newServerNotes.trim() || 'Baru ditambahkan ke master server.',
-    };
-    addServer(newSrvData);
-    setServers(prev => [...prev, { ...newSrvData, id: `srv-${Date.now()}` }]);
-    setIsAddServerOpen(false);
-    setNewServerName('');
-    setNewServerNotes('');
-    showToast('Server berhasil ditambahkan ke master server.', 'success');
-  };
-
   // --- Handlers: Licenses ---
   const handleUpdateInventoryItem = (id: string, total: number, assigned: number) => {
     setLicenses(prev => {
@@ -330,39 +290,6 @@ export const ReportFormModal: React.FC<ReportFormModalProps> = ({ date }) => {
       });
       return { ...prev, items };
     });
-  };
-
-  const handleAddInventorySoftware = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newInventorySoftware.softwareName.trim()) {
-      showToast('Nama software wajib diisi.', 'error');
-      return;
-    }
-    const total = Math.max(0, Number(newInventorySoftware.total) || 0);
-    const assigned = Math.max(0, Number(newInventorySoftware.assigned) || 0);
-    const newItem: LicenseInventoryItem = {
-      id: `lic-${Date.now()}`,
-      softwareName: newInventorySoftware.softwareName.trim(),
-      category: newInventorySoftware.category,
-      totalLicenses: total,
-      assignedLicenses: assigned,
-      availableLicenses: Math.max(0, total - assigned),
-      vendor: newInventorySoftware.vendor.trim() || 'Internal License',
-      notes: 'Ditambahkan via Shift Report',
-    };
-    setLicenses(prev => ({
-      ...prev,
-      items: [...(prev.items || []), newItem],
-    }));
-    setShowAddInventoryModal(false);
-    setNewInventorySoftware({
-      softwareName: '',
-      category: 'OTHERS',
-      total: 10,
-      assigned: 5,
-      vendor: '',
-    });
-    showToast('Software berhasil ditambahkan ke inventaris lisensi.', 'success');
   };
 
   const handleAddAssignment = (e: React.FormEvent) => {
@@ -1316,14 +1243,6 @@ export const ReportFormModal: React.FC<ReportFormModalProps> = ({ date }) => {
                       <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
                       Tandai Semua Online
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => setIsAddServerOpen(true)}
-                      className="px-3 py-1.5 text-xs font-semibold text-blue-200 bg-blue-900/60 hover:bg-blue-800 border border-blue-700/60 rounded-lg shadow-xs transition-colors flex items-center gap-1.5"
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                      + Tambah Server
-                    </button>
                   </div>
                 </div>
 
@@ -1366,7 +1285,7 @@ export const ReportFormModal: React.FC<ReportFormModalProps> = ({ date }) => {
                       Belum ada node server yang terdaftar di sistem
                     </p>
                     <p className="text-[11px] text-slate-400 font-mono">
-                      Admin dapat memasukkan list server secara manual melalui tab "Infrastructure Fleet", atau klik tombol Tambah Server di atas.
+                      Daftar master server dikonfigurasi melalui menu &quot;Infrastructure Fleet&quot;.
                     </p>
                   </div>
                 ) : (
@@ -1528,18 +1447,9 @@ export const ReportFormModal: React.FC<ReportFormModalProps> = ({ date }) => {
                         Opsional / Tidak Wajib
                       </span>
                     </div>
-                    Manajemen ketersediaan lisensi cloud &amp; on-premise (Microsoft 365, AutoCAD, SAP, Adobe, dll). Pemantauan ketersediaan (available pool) dan pencatatan penugasan lisensi ke pengguna baru (new user assignment).
+                    Manajemen ketersediaan lisensi cloud &amp; on-premise (Microsoft 365, AutoCAD, SAP, Adobe, dll). Pemantauan ketersediaan (available pool) dan pencatatan penugasan lisensi ke pengguna baru (new user assignment). Penambahan jenis aset/lisensi baru dikonfigurasi melalui menu &quot;Infrastructure Fleet&quot;.
                   </div>
                 </div>
-
-                <button
-                  type="button"
-                  onClick={() => setShowAddInventoryModal(true)}
-                  className="px-3 py-1.5 text-xs font-semibold text-purple-800 bg-white hover:bg-purple-100 border border-purple-300 rounded-lg shadow-2xs transition-colors flex items-center gap-1.5 shrink-0"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  + Tambah Software Baru
-                </button>
               </div>
 
               {/* SUBSECTION 1: INVENTORY AVAILABILITY */}
@@ -2616,185 +2526,6 @@ export const ReportFormModal: React.FC<ReportFormModalProps> = ({ date }) => {
             )}
           </div>
         </div>
-
-        {/* Modal: Quick Add Server Node */}
-        {isAddServerOpen && (
-          <div className="fixed inset-0 z-60 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-            <div className="bg-white border border-slate-200 rounded-xl max-w-md w-full p-5 space-y-4 shadow-2xl text-slate-900">
-              <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-                <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                  <Server className="w-4 h-4 text-blue-700" />
-                  Tambah Server Node ke Master List
-                </h3>
-                <button
-                  type="button"
-                  onClick={() => setIsAddServerOpen(false)}
-                  className="p-1 rounded text-slate-400 hover:text-slate-800"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-
-              <form onSubmit={handleQuickAddServer} className="space-y-3 text-xs">
-                <div>
-                  <label className="text-slate-700 font-semibold block mb-1">Nama Server *</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="Contoh: SRV-MES-DB02 (MES Backup)"
-                    value={newServerName}
-                    onChange={e => setNewServerName(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 text-slate-900 font-mono text-xs focus:outline-none focus:border-blue-600"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-slate-700 font-semibold block mb-1">Lokasi Penempatan *</label>
-                  <select
-                    value={newServerLocation}
-                    onChange={e => setNewServerLocation(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 text-slate-900 text-xs focus:outline-none focus:border-blue-600"
-                  >
-                    <option value="Site Uso Server Room">Site Uso Server Room</option>
-                    <option value="Site Uso Control Building">Site Uso Control Building</option>
-                    <option value="Site Uso Telecom Tower">Site Uso Telecom Tower</option>
-                    <option value="HO Jakarta Server Rack">HO Jakarta Server Rack</option>
-                    <option value="Site Uso CCR Room">Site Uso CCR Room</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="text-slate-700 font-semibold block mb-1">Catatan</label>
-                  <input
-                    type="text"
-                    placeholder="Catatan kondisi operasional server..."
-                    value={newServerNotes}
-                    onChange={e => setNewServerNotes(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 text-slate-900 text-xs focus:outline-none focus:border-blue-600"
-                  />
-                </div>
-
-                <div className="flex items-center justify-end gap-2 pt-2">
-                  <button
-                    type="button"
-                    onClick={() => setIsAddServerOpen(false)}
-                    className="px-3.5 py-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900 bg-slate-100 rounded-lg"
-                  >
-                    Batal
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-4 py-1.5 text-xs font-semibold text-white bg-blue-700 hover:bg-blue-800 rounded-lg shadow-xs"
-                  >
-                    Simpan Server
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
-
-        {/* Modal: Quick Add Inventory Software */}
-        {showAddInventoryModal && (
-          <div className="fixed inset-0 z-60 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-            <div className="bg-white border border-slate-200 rounded-xl max-w-md w-full p-5 space-y-4 shadow-2xl text-slate-900">
-              <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-                <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                  <FileKey className="w-4 h-4 text-purple-700" />
-                  Tambah Software ke Inventaris
-                </h3>
-                <button
-                  type="button"
-                  onClick={() => setShowAddInventoryModal(false)}
-                  className="p-1 rounded text-slate-400 hover:text-slate-800"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-
-              <form onSubmit={handleAddInventorySoftware} className="space-y-3 text-xs">
-                <div>
-                  <label className="text-slate-700 font-semibold block mb-1">Nama Software *</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="Contoh: Wonderware InTouch SCADA"
-                    value={newInventorySoftware.softwareName}
-                    onChange={e => setNewInventorySoftware({ ...newInventorySoftware, softwareName: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 text-slate-900 text-xs focus:outline-none focus:border-blue-600"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-slate-700 font-semibold block mb-1">Kategori</label>
-                  <select
-                    value={newInventorySoftware.category}
-                    onChange={e =>
-                      setNewInventorySoftware({
-                        ...newInventorySoftware,
-                        category: e.target.value as 'MS365' | 'OTHERS',
-                      })
-                    }
-                    className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 text-slate-900 text-xs focus:outline-none focus:border-blue-600"
-                  >
-                    <option value="MS365">Microsoft 365</option>
-                    <option value="OTHERS">Software Others</option>
-                  </select>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-slate-700 font-semibold block mb-1">Total Lisensi</label>
-                    <input
-                      type="number"
-                      min={0}
-                      value={newInventorySoftware.total}
-                      onChange={e => setNewInventorySoftware({ ...newInventorySoftware, total: Number(e.target.value) })}
-                      className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 text-slate-900 font-mono text-xs focus:outline-none focus:border-blue-600"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-slate-700 font-semibold block mb-1">Assigned (In Use)</label>
-                    <input
-                      type="number"
-                      min={0}
-                      value={newInventorySoftware.assigned}
-                      onChange={e => setNewInventorySoftware({ ...newInventorySoftware, assigned: Number(e.target.value) })}
-                      className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 text-slate-900 font-mono text-xs focus:outline-none focus:border-blue-600"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="text-slate-700 font-semibold block mb-1">Vendor / Partner</label>
-                  <input
-                    type="text"
-                    placeholder="Contoh: Schneider Electric"
-                    value={newInventorySoftware.vendor}
-                    onChange={e => setNewInventorySoftware({ ...newInventorySoftware, vendor: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 text-slate-900 text-xs focus:outline-none focus:border-blue-600"
-                  />
-                </div>
-
-                <div className="flex items-center justify-end gap-2 pt-2">
-                  <button
-                    type="button"
-                    onClick={() => setShowAddInventoryModal(false)}
-                    className="px-3.5 py-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900 bg-slate-100 rounded-lg"
-                  >
-                    Batal
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-4 py-1.5 text-xs font-semibold text-white bg-purple-700 hover:bg-purple-800 rounded-lg shadow-xs"
-                  >
-                    Simpan ke Inventaris
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
 
         {/* Confirmation Modal for Permanent Submission */}
         {showConfirmModal && (
