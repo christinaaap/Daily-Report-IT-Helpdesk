@@ -868,7 +868,7 @@ export const ReportDetailModal: React.FC<ReportDetailModalProps> = ({ reportId }
                       {report.mailboxCrowdstrike?.mailboxAlmostFull ?? 0}
                     </div>
                     <span className="text-[10px] text-amber-700 font-medium mt-0.5 block">
-                      &gt; 90% Storage Capacity
+                      Kuota penyimpanan mendekati penuh
                     </span>
                   </div>
 
@@ -881,7 +881,7 @@ export const ReportDetailModal: React.FC<ReportDetailModalProps> = ({ reportId }
                       {report.mailboxCrowdstrike?.mailboxFull ?? 0}
                     </div>
                     <span className="text-[10px] text-rose-700 font-medium mt-0.5 block">
-                      100% Inability to Receive Mail
+                      Kuota penyimpanan 100% penuh
                     </span>
                   </div>
 
@@ -894,7 +894,7 @@ export const ReportDetailModal: React.FC<ReportDetailModalProps> = ({ reportId }
                       {report.mailboxCrowdstrike?.crowdstrikeMaliciousActivity ?? 0}
                     </div>
                     <span className="text-[10px] text-red-800 font-semibold mt-0.5 block">
-                      Malicious Activity Detected
+                      Aktivitas mencurigakan / malware
                     </span>
                   </div>
 
@@ -907,7 +907,7 @@ export const ReportDetailModal: React.FC<ReportDetailModalProps> = ({ reportId }
                       {report.mailboxCrowdstrike?.crowdstrikeInactive30Days ?? 0}
                     </div>
                     <span className="text-[10px] text-slate-600 font-medium mt-0.5 block">
-                      Inactive for 30+ Days
+                      Sensor agent tidak aktif &gt; 30 hari
                     </span>
                   </div>
                 </div>
@@ -950,8 +950,8 @@ export const ReportDetailModal: React.FC<ReportDetailModalProps> = ({ reportId }
                                     : item.type === 'MAILBOX_FULL'
                                     ? 'Mailbox Full'
                                     : item.type === 'CROWDSTRIKE_MALICIOUS'
-                                    ? 'Malicious Activity'
-                                    : 'Inactive > 30 Days'}
+                                    ? 'Crowdstrike Malicious'
+                                    : 'Crowdstrike Inactive'}
                                 </span>
                               </td>
                               <td className="py-2.5 px-3 font-semibold text-slate-900">{item.targetUserOrHost}</td>

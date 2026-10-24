@@ -399,22 +399,86 @@ export const ReportFormModal: React.FC<ReportFormModalProps> = ({ date }) => {
     }));
   };
 
-  // --- Handlers: Mailbox and CrowdStrike ---
+  // --- Handlers: Mailbox and CrowdStrike (Synchronized with counters) ---
+  const handleUpdateMetricCount = (
+    category: 'MAILBOX_ALMOST_FULL' | 'MAILBOX_FULL' | 'CROWDSTRIKE_MALICIOUS' | 'CROWDSTRIKE_INACTIVE_30D',
+    newCount: number
+  ) => {
+    const safeCount = Math.max(0, isNaN(newCount) ? 0 : newCount);
+    setMailboxMetrics(prev => {
+      const currentDetails = prev.details || [];
+      const categoryDetails = currentDetails.filter(d => d.type === category);
+      const otherDetails = currentDetails.filter(d => d.type !== category);
+
+      let updatedCategoryDetails = [...categoryDetails];
+      if (safeCount > categoryDetails.length) {
+        const diff = safeCount - categoryDetails.length;
+        const defaultDesc =
+          category === 'MAILBOX_ALMOST_FULL'
+            ? 'Status kuota > 90%, perlu pembersihan mailbox.'
+            : category === 'MAILBOX_FULL'
+            ? 'Status kuota 100% penuh, tidak dapat terima email.'
+            : category === 'CROWDSTRIKE_MALICIOUS'
+            ? 'Deteksi malware/malicious behavior pada endpoint.'
+            : 'Sensor agent CrowdStrike offline > 30 hari.';
+
+        for (let i = 0; i < diff; i++) {
+          updatedCategoryDetails.push({
+            id: `mb-cs-${category.toLowerCase()}-${Date.now()}-${i}`,
+            type: category,
+            targetUserOrHost: '',
+            departmentOrLocation: 'Site Uso Operations',
+            notes: defaultDesc,
+          });
+        }
+      } else if (safeCount < categoryDetails.length) {
+        updatedCategoryDetails = updatedCategoryDetails.slice(0, safeCount);
+      }
+
+      const newAllDetails = [...otherDetails, ...updatedCategoryDetails];
+
+      return {
+        ...prev,
+        mailboxAlmostFull: category === 'MAILBOX_ALMOST_FULL' ? safeCount : prev.mailboxAlmostFull,
+        mailboxFull: category === 'MAILBOX_FULL' ? safeCount : prev.mailboxFull,
+        crowdstrikeMaliciousActivity:
+          category === 'CROWDSTRIKE_MALICIOUS' ? safeCount : prev.crowdstrikeMaliciousActivity,
+        crowdstrikeInactive30Days:
+          category === 'CROWDSTRIKE_INACTIVE_30D' ? safeCount : prev.crowdstrikeInactive30Days,
+        details: newAllDetails,
+      };
+    });
+  };
+
+  const handleUpdateMailboxDetail = (id: string, updates: Partial<MailboxCrowdstrikeDetailItem>) => {
+    setMailboxMetrics(prev => ({
+      ...prev,
+      details: (prev.details || []).map(d => (d.id === id ? { ...d, ...updates } : d)),
+    }));
+  };
+
   const handleAddMailboxDetail = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newMailboxDetail.targetUserOrHost.trim()) {
       showToast('User email atau Hostname wajib diisi.', 'error');
       return;
     }
+    const category = newMailboxDetail.type;
     const newDetail: MailboxCrowdstrikeDetailItem = {
       id: `mb-cs-${Date.now()}`,
-      type: newMailboxDetail.type,
+      type: category,
       targetUserOrHost: newMailboxDetail.targetUserOrHost.trim(),
-      departmentOrLocation: newMailboxDetail.departmentOrLocation.trim() || 'Site Uso',
+      departmentOrLocation: newMailboxDetail.departmentOrLocation.trim() || 'Site Uso Operations',
       notes: newMailboxDetail.notes.trim() || 'Status dipantau helpdesk.',
     };
     setMailboxMetrics(prev => ({
       ...prev,
+      mailboxAlmostFull: category === 'MAILBOX_ALMOST_FULL' ? prev.mailboxAlmostFull + 1 : prev.mailboxAlmostFull,
+      mailboxFull: category === 'MAILBOX_FULL' ? prev.mailboxFull + 1 : prev.mailboxFull,
+      crowdstrikeMaliciousActivity:
+        category === 'CROWDSTRIKE_MALICIOUS' ? prev.crowdstrikeMaliciousActivity + 1 : prev.crowdstrikeMaliciousActivity,
+      crowdstrikeInactive30Days:
+        category === 'CROWDSTRIKE_INACTIVE_30D' ? prev.crowdstrikeInactive30Days + 1 : prev.crowdstrikeInactive30Days,
       details: [...(prev.details || []), newDetail],
     }));
     setNewMailboxDetail({
@@ -423,14 +487,34 @@ export const ReportFormModal: React.FC<ReportFormModalProps> = ({ date }) => {
       departmentOrLocation: 'Site Uso Operations',
       notes: '',
     });
-    showToast('Detail insiden/akun berhasil ditambahkan.', 'success');
+    showToast('Detail rincian berhasil ditambahkan dan jumlah counter otomatis bertambah.', 'success');
   };
 
   const handleDeleteMailboxDetail = (id: string) => {
-    setMailboxMetrics(prev => ({
-      ...prev,
-      details: (prev.details || []).filter(d => d.id !== id),
-    }));
+    setMailboxMetrics(prev => {
+      const itemToDelete = (prev.details || []).find(d => d.id === id);
+      const newDetails = (prev.details || []).filter(d => d.id !== id);
+      if (!itemToDelete) return { ...prev, details: newDetails };
+
+      return {
+        ...prev,
+        mailboxAlmostFull:
+          itemToDelete.type === 'MAILBOX_ALMOST_FULL'
+            ? Math.max(0, prev.mailboxAlmostFull - 1)
+            : prev.mailboxAlmostFull,
+        mailboxFull:
+          itemToDelete.type === 'MAILBOX_FULL' ? Math.max(0, prev.mailboxFull - 1) : prev.mailboxFull,
+        crowdstrikeMaliciousActivity:
+          itemToDelete.type === 'CROWDSTRIKE_MALICIOUS'
+            ? Math.max(0, prev.crowdstrikeMaliciousActivity - 1)
+            : prev.crowdstrikeMaliciousActivity,
+        crowdstrikeInactive30Days:
+          itemToDelete.type === 'CROWDSTRIKE_INACTIVE_30D'
+            ? Math.max(0, prev.crowdstrikeInactive30Days - 1)
+            : prev.crowdstrikeInactive30Days,
+        details: newDetails,
+      };
+    });
   };
 
   // --- Handlers: Physical Rooms ---
@@ -1770,13 +1854,10 @@ export const ReportFormModal: React.FC<ReportFormModalProps> = ({ date }) => {
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
                 {/* 1. Mailbox Almost Full */}
                 <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-xs space-y-2">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="font-semibold text-slate-700 flex items-center gap-1.5">
+                  <div className="flex items-center text-xs">
+                    <span className="font-semibold text-slate-800 flex items-center gap-1.5">
                       <Mail className="w-4 h-4 text-amber-600" />
                       Mailbox Almost Full
-                    </span>
-                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200 font-bold">
-                      &gt;= 90% Quota
                     </span>
                   </div>
                   <div className="flex items-center gap-3 pt-1">
@@ -1785,26 +1866,23 @@ export const ReportFormModal: React.FC<ReportFormModalProps> = ({ date }) => {
                       min={0}
                       value={mailboxMetrics.mailboxAlmostFull}
                       onChange={e =>
-                        setMailboxMetrics({ ...mailboxMetrics, mailboxAlmostFull: Math.max(0, Number(e.target.value)) })
+                        handleUpdateMetricCount('MAILBOX_ALMOST_FULL', Number(e.target.value))
                       }
                       className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-lg font-bold font-mono text-slate-900 focus:bg-white focus:outline-none focus:border-amber-500"
                     />
                     <span className="text-xs text-slate-500 font-mono">Akun</span>
                   </div>
-                  <p className="text-[11px] text-slate-400">
+                  <p className="text-[11px] text-slate-500">
                     Jumlah akun user yang kuota penyimpanannya mendekati batas penuh.
                   </p>
                 </div>
 
                 {/* 2. Mailbox Full */}
                 <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-xs space-y-2">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="font-semibold text-slate-700 flex items-center gap-1.5">
+                  <div className="flex items-center text-xs">
+                    <span className="font-semibold text-slate-800 flex items-center gap-1.5">
                       <Mail className="w-4 h-4 text-rose-600" />
                       Mailbox Full
-                    </span>
-                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-rose-50 text-rose-800 border border-rose-200 font-bold">
-                      100% Locked
                     </span>
                   </div>
                   <div className="flex items-center gap-3 pt-1">
@@ -1813,26 +1891,23 @@ export const ReportFormModal: React.FC<ReportFormModalProps> = ({ date }) => {
                       min={0}
                       value={mailboxMetrics.mailboxFull}
                       onChange={e =>
-                        setMailboxMetrics({ ...mailboxMetrics, mailboxFull: Math.max(0, Number(e.target.value)) })
+                        handleUpdateMetricCount('MAILBOX_FULL', Number(e.target.value))
                       }
                       className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-lg font-bold font-mono text-slate-900 focus:bg-white focus:outline-none focus:border-rose-500"
                     />
                     <span className="text-xs text-slate-500 font-mono">Akun</span>
                   </div>
-                  <p className="text-[11px] text-slate-400">
+                  <p className="text-[11px] text-slate-500">
                     Jumlah akun user yang telah mencapai kuota 100% (tidak dapat terima email).
                   </p>
                 </div>
 
                 {/* 3. Crowdstrike Detection Malicious activity */}
                 <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-xs space-y-2">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="font-semibold text-slate-700 flex items-center gap-1.5">
+                  <div className="flex items-center text-xs">
+                    <span className="font-semibold text-slate-800 flex items-center gap-1.5">
                       <ShieldAlert className="w-4 h-4 text-rose-600" />
                       Crowdstrike Detection
-                    </span>
-                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-rose-50 text-rose-800 border border-rose-200 font-bold">
-                      Malicious
                     </span>
                   </div>
                   <div className="flex items-center gap-3 pt-1">
@@ -1841,29 +1916,23 @@ export const ReportFormModal: React.FC<ReportFormModalProps> = ({ date }) => {
                       min={0}
                       value={mailboxMetrics.crowdstrikeMaliciousActivity}
                       onChange={e =>
-                        setMailboxMetrics({
-                          ...mailboxMetrics,
-                          crowdstrikeMaliciousActivity: Math.max(0, Number(e.target.value)),
-                        })
+                        handleUpdateMetricCount('CROWDSTRIKE_MALICIOUS', Number(e.target.value))
                       }
                       className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-lg font-bold font-mono text-slate-900 focus:bg-white focus:outline-none focus:border-rose-500"
                     />
                     <span className="text-xs text-slate-500 font-mono">Insiden</span>
                   </div>
-                  <p className="text-[11px] text-slate-400">
+                  <p className="text-[11px] text-slate-500">
                     Deteksi aktivitas malware atau malicious behavior pada endpoint.
                   </p>
                 </div>
 
                 {/* 4. Crowdstrike Inactive 30 days */}
                 <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-xs space-y-2">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="font-semibold text-slate-700 flex items-center gap-1.5">
+                  <div className="flex items-center text-xs">
+                    <span className="font-semibold text-slate-800 flex items-center gap-1.5">
                       <Clock className="w-4 h-4 text-slate-600" />
                       Crowdstrike Inactive
-                    </span>
-                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200 font-bold">
-                      &gt; 30 Hari
                     </span>
                   </div>
                   <div className="flex items-center gap-3 pt-1">
@@ -1872,22 +1941,19 @@ export const ReportFormModal: React.FC<ReportFormModalProps> = ({ date }) => {
                       min={0}
                       value={mailboxMetrics.crowdstrikeInactive30Days}
                       onChange={e =>
-                        setMailboxMetrics({
-                          ...mailboxMetrics,
-                          crowdstrikeInactive30Days: Math.max(0, Number(e.target.value)),
-                        })
+                        handleUpdateMetricCount('CROWDSTRIKE_INACTIVE_30D', Number(e.target.value))
                       }
                       className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-lg font-bold font-mono text-slate-900 focus:bg-white focus:outline-none focus:border-slate-500"
                     />
                     <span className="text-xs text-slate-500 font-mono">Host</span>
                   </div>
-                  <p className="text-[11px] text-slate-400">
+                  <p className="text-[11px] text-slate-500">
                     Jumlah sensor agent CrowdStrike yang tidak aktif / offline &gt; 30 hari.
                   </p>
                 </div>
               </div>
 
-              {/* Rincian Akun Mailbox / Host CrowdStrike (Jika ada nilai > 0) */}
+              {/* Rincian Akun Mailbox / Host CrowdStrike (Sinkron Otomatis) */}
               <div className="p-5 rounded-xl bg-white border border-slate-200 shadow-2xs space-y-4">
                 <div className="flex items-center justify-between pb-2 border-b border-slate-200">
                   <div className="flex items-center gap-2">
@@ -1896,8 +1962,9 @@ export const ReportFormModal: React.FC<ReportFormModalProps> = ({ date }) => {
                       Rincian Akun Mailbox &amp; Host Terdeteksi ({mailboxMetrics.details?.length || 0} Terdata)
                     </h4>
                   </div>
-                  <span className="text-[11px] text-slate-500 font-mono">
-                    Catat email user atau nama laptop/PC yang terdampak
+                  <span className="text-[11px] text-emerald-700 font-medium bg-emerald-50 px-2.5 py-0.5 rounded border border-emerald-200 flex items-center gap-1">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                    Sinkron Otomatis dengan Counter
                   </span>
                 </div>
 
@@ -1919,10 +1986,10 @@ export const ReportFormModal: React.FC<ReportFormModalProps> = ({ date }) => {
                         }
                         className="w-full bg-white border border-slate-300 rounded px-2.5 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-blue-600 font-medium"
                       >
-                        <option value="MAILBOX_ALMOST_FULL">Mailbox Almost Full (&gt;=90%)</option>
-                        <option value="MAILBOX_FULL">Mailbox Full (100%)</option>
+                        <option value="MAILBOX_ALMOST_FULL">Mailbox Almost Full</option>
+                        <option value="MAILBOX_FULL">Mailbox Full</option>
                         <option value="CROWDSTRIKE_MALICIOUS">Crowdstrike Malicious Activity</option>
-                        <option value="CROWDSTRIKE_INACTIVE_30D">Crowdstrike Inactive &gt; 30 Days</option>
+                        <option value="CROWDSTRIKE_INACTIVE_30D">Crowdstrike Inactive 30 Days</option>
                       </select>
                     </div>
 
@@ -1960,34 +2027,39 @@ export const ReportFormModal: React.FC<ReportFormModalProps> = ({ date }) => {
                   </div>
                 </form>
 
-                {/* Table Details */}
-                <div className="border border-slate-200 rounded-xl overflow-hidden">
-                  <table className="w-full text-left text-xs">
+                {/* Table Details with Inline Edit */}
+                <div className="border border-slate-200 rounded-xl overflow-x-auto">
+                  <table className="w-full text-left text-xs min-w-[700px]">
                     <thead className="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200">
                       <tr>
-                        <th className="py-2.5 px-3">Kategori</th>
-                        <th className="py-2.5 px-3">User Email / Hostname</th>
+                        <th className="py-2.5 px-3 w-44">Kategori</th>
+                        <th className="py-2.5 px-3">User Email / Hostname *</th>
                         <th className="py-2.5 px-3">Departemen / Lokasi</th>
                         <th className="py-2.5 px-3">Status / Keterangan</th>
-                        <th className="py-2.5 px-3 text-right">Aksi</th>
+                        <th className="py-2.5 px-3 text-right w-16">Aksi</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100 font-mono text-xs">
+                    <tbody className="divide-y divide-slate-100 text-xs">
                       {(mailboxMetrics.details || []).length === 0 ? (
                         <tr>
-                          <td colSpan={5} className="py-4 text-center text-slate-400 font-sans">
-                            Tidak ada rincian akun mailbox penuh atau insiden CrowdStrike yang dicatat.
+                          <td colSpan={5} className="py-6 text-center text-slate-400 font-sans">
+                            Semua kuota mailbox dan agent CrowdStrike dalam kondisi nominal (0 insiden).<br />
+                            <span className="text-[11px] text-slate-400 mt-1 inline-block">
+                              Ubah nilai pada kartu di atas atau klik tombol Tambah Rincian untuk mencatat insiden.
+                            </span>
                           </td>
                         </tr>
                       ) : (
-                        (mailboxMetrics.details || []).map(item => (
-                          <tr key={item.id} className="hover:bg-slate-50 font-sans">
+                        (mailboxMetrics.details || []).map((item, index) => (
+                          <tr key={item.id} className="hover:bg-slate-50/70 font-sans">
                             <td className="py-2.5 px-3">
                               <span
-                                className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold ${
+                                className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold inline-block ${
                                   item.type === 'MAILBOX_FULL' || item.type === 'CROWDSTRIKE_MALICIOUS'
                                     ? 'bg-rose-100 text-rose-800 border border-rose-200'
-                                    : 'bg-amber-100 text-amber-800 border border-amber-200'
+                                    : item.type === 'MAILBOX_ALMOST_FULL'
+                                    ? 'bg-amber-100 text-amber-800 border border-amber-200'
+                                    : 'bg-slate-100 text-slate-800 border border-slate-200'
                                 }`}
                               >
                                 {item.type === 'MAILBOX_ALMOST_FULL'
@@ -1995,19 +2067,53 @@ export const ReportFormModal: React.FC<ReportFormModalProps> = ({ date }) => {
                                   : item.type === 'MAILBOX_FULL'
                                   ? 'Mailbox Full'
                                   : item.type === 'CROWDSTRIKE_MALICIOUS'
-                                  ? 'Malicious Activity'
-                                  : 'Inactive 30 Days'}
+                                  ? 'Crowdstrike Malicious'
+                                  : 'Crowdstrike Inactive'}
                               </span>
                             </td>
-                            <td className="py-2.5 px-3 font-semibold text-slate-900 font-mono">{item.targetUserOrHost}</td>
-                            <td className="py-2.5 px-3 text-slate-600">{item.departmentOrLocation}</td>
-                            <td className="py-2.5 px-3 text-slate-500 text-[11px]">{item.notes}</td>
+                            <td className="py-2.5 px-3">
+                              <input
+                                type="text"
+                                placeholder={
+                                  item.type.startsWith('MAILBOX')
+                                    ? 'user@donggi-senoro.com'
+                                    : 'Nama PC / Laptop (mis. LT-USO-04)'
+                                }
+                                value={item.targetUserOrHost}
+                                onChange={e =>
+                                  handleUpdateMailboxDetail(item.id, { targetUserOrHost: e.target.value })
+                                }
+                                className={`w-full bg-white border rounded px-2.5 py-1 text-xs text-slate-900 font-mono focus:outline-none focus:border-blue-600 ${
+                                  !item.targetUserOrHost.trim() ? 'border-amber-400 bg-amber-50/30' : 'border-slate-300'
+                                }`}
+                              />
+                            </td>
+                            <td className="py-2.5 px-3">
+                              <input
+                                type="text"
+                                placeholder="Departemen / Lokasi"
+                                value={item.departmentOrLocation || ''}
+                                onChange={e =>
+                                  handleUpdateMailboxDetail(item.id, { departmentOrLocation: e.target.value })
+                                }
+                                className="w-full bg-white border border-slate-300 rounded px-2.5 py-1 text-xs text-slate-900 focus:outline-none focus:border-blue-600"
+                              />
+                            </td>
+                            <td className="py-2.5 px-3">
+                              <input
+                                type="text"
+                                placeholder="Keterangan tindakan..."
+                                value={item.notes || ''}
+                                onChange={e => handleUpdateMailboxDetail(item.id, { notes: e.target.value })}
+                                className="w-full bg-white border border-slate-300 rounded px-2.5 py-1 text-xs text-slate-900 focus:outline-none focus:border-blue-600"
+                              />
+                            </td>
                             <td className="py-2.5 px-3 text-right">
                               <button
                                 type="button"
                                 onClick={() => handleDeleteMailboxDetail(item.id)}
-                                className="text-slate-400 hover:text-rose-600 p-1 rounded"
-                                title="Hapus baris"
+                                className="text-slate-400 hover:text-rose-600 p-1.5 rounded transition-colors inline-flex"
+                                title="Hapus baris ini (juga otomatis mengurangi jumlah counter)"
                               >
                                 <Trash2 className="w-3.5 h-3.5" />
                               </button>
