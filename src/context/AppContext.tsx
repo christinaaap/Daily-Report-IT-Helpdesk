@@ -296,7 +296,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [meetingRooms, setMeetingRooms] = useState<PhysicalInspectionItem[]>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY_ROOMS);
-      if (saved) return JSON.parse(saved);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          // Permanently purge 'Batui Meeting Room' and 'Daegu Meeting Room' from storage
+          const cleaned = parsed.filter(
+            r =>
+              !r.roomName.toLowerCase().includes('batui') &&
+              !r.roomName.toLowerCase().includes('daegu')
+          );
+          localStorage.setItem(STORAGE_KEY_ROOMS, JSON.stringify(cleaned));
+          return cleaned;
+        }
+      }
     } catch {
       // ignore
     }
@@ -724,7 +736,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const deleteServer = (id: string) => {
     const found = servers.find(s => s.id === id);
-    setServers(prev => prev.filter(s => s.id !== id));
+    setServers(prev => {
+      const nextServers = prev.filter(s => s.id !== id);
+      try {
+        localStorage.setItem(STORAGE_KEY_SERVERS, JSON.stringify(nextServers));
+      } catch {
+        // ignore
+      }
+      return nextServers;
+    });
     recordAuditLog('SERVER_NODE_DELETED', `Server ${found?.name || id} dihapus dari fleet monitoring.`);
     showToast(`Server ${found?.name || ''} telah dihapus.`, 'info');
   };
@@ -756,7 +776,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const deleteMeetingRoom = (id: string) => {
     const found = meetingRooms.find(r => r.id === id);
-    setMeetingRooms(prev => prev.filter(r => r.id !== id));
+    setMeetingRooms(prev => {
+      const nextRooms = prev.filter(r => r.id !== id);
+      try {
+        localStorage.setItem(STORAGE_KEY_ROOMS, JSON.stringify(nextRooms));
+      } catch {
+        // ignore
+      }
+      return nextRooms;
+    });
     recordAuditLog('MEETING_ROOM_DELETED', `Ruang meeting ${found?.roomName || id} dihapus.`);
     showToast(`Ruang meeting ${found?.roomName || ''} telah dihapus.`, 'info');
   };
@@ -780,7 +808,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const deleteCompanyAsset = (id: string) => {
     const found = companyAssets.find(a => a.id === id);
-    setCompanyAssets(prev => prev.filter(a => a.id !== id));
+    setCompanyAssets(prev => {
+      const nextAssets = prev.filter(a => a.id !== id);
+      try {
+        localStorage.setItem(STORAGE_KEY_ASSETS, JSON.stringify(nextAssets));
+      } catch {
+        // ignore
+      }
+      return nextAssets;
+    });
     recordAuditLog('COMPANY_ASSET_DELETED', `Aset/lisensi ${found?.name || id} dihapus.`);
     showToast(`Aset ${found?.name || ''} telah dihapus.`, 'info');
   };

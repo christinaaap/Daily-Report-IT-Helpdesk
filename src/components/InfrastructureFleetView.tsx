@@ -84,6 +84,24 @@ export const InfrastructureFleetView: React.FC = () => {
     notes: '',
   });
 
+  const [deleteTarget, setDeleteTarget] = useState<{
+    type: 'ROOM' | 'SERVER' | 'ASSET';
+    id: string;
+    name: string;
+  } | null>(null);
+
+  const handleConfirmDelete = () => {
+    if (!deleteTarget) return;
+    if (deleteTarget.type === 'ROOM') {
+      deleteMeetingRoom(deleteTarget.id);
+    } else if (deleteTarget.type === 'SERVER') {
+      deleteServer(deleteTarget.id);
+    } else if (deleteTarget.type === 'ASSET') {
+      deleteCompanyAsset(deleteTarget.id);
+    }
+    setDeleteTarget(null);
+  };
+
   // --- Room Handlers ---
   const handleOpenAddRoom = () => {
     setEditingRoomId(null);
@@ -139,9 +157,7 @@ export const InfrastructureFleetView: React.FC = () => {
   };
 
   const handleDeleteRoom = (id: string, name: string) => {
-    if (window.confirm(`Hapus ruang meeting: ${name}?`)) {
-      deleteMeetingRoom(id);
-    }
+    setDeleteTarget({ type: 'ROOM', id, name });
   };
 
   // --- Server Handlers ---
@@ -199,9 +215,7 @@ export const InfrastructureFleetView: React.FC = () => {
   };
 
   const handleDeleteServer = (id: string, name: string) => {
-    if (window.confirm(`Hapus server node: ${name}?`)) {
-      deleteServer(id);
-    }
+    setDeleteTarget({ type: 'SERVER', id, name });
   };
 
   // --- Asset / License Handlers ---
@@ -273,9 +287,7 @@ export const InfrastructureFleetView: React.FC = () => {
   };
 
   const handleDeleteAsset = (id: string, name: string) => {
-    if (window.confirm(`Hapus aset / lisensi: ${name}?`)) {
-      deleteCompanyAsset(id);
-    }
+    setDeleteTarget({ type: 'ASSET', id, name });
   };
 
   return (
@@ -1028,6 +1040,47 @@ export const InfrastructureFleetView: React.FC = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal (Iframe-safe, replaces window.confirm) */}
+      {deleteTarget && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-sm w-full p-5 shadow-2xl border border-slate-200 space-y-4 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 rounded-full bg-rose-100 text-rose-600 shrink-0">
+                <Trash2 className="w-5 h-5" />
+              </div>
+              <div>
+                <h4 className="text-sm font-bold text-slate-900">Konfirmasi Hapus</h4>
+                <p className="text-[11px] text-slate-500">Tindakan ini permanen pada backend database.</p>
+              </div>
+            </div>
+            <p className="text-xs text-slate-700 bg-slate-50 p-3 rounded-lg border border-slate-200 leading-relaxed">
+              Apakah Anda yakin ingin menghapus{' '}
+              <strong className="text-slate-900">
+                {deleteTarget.type === 'ROOM' ? 'ruang meeting' : deleteTarget.type === 'SERVER' ? 'server' : 'aset'}: &quot;{deleteTarget.name}&quot;
+              </strong>{' '}
+              secara permanen dari sistem?
+            </p>
+            <div className="flex items-center justify-end gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => setDeleteTarget(null)}
+                className="px-3.5 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg transition-colors border border-slate-200"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDelete}
+                className="px-3.5 py-1.5 text-xs font-semibold text-white bg-rose-600 hover:bg-rose-700 rounded-lg shadow-xs transition-colors flex items-center gap-1.5"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                Hapus Sekarang
+              </button>
+            </div>
           </div>
         </div>
       )}
