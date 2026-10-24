@@ -25,6 +25,9 @@ import {
   FileText,
   AlertCircle,
   Package,
+  ChevronLeft,
+  ChevronRight,
+  ChevronDown,
 } from 'lucide-react';
 import { DigitalSignaturePad } from './DigitalSignaturePad';
 
@@ -106,48 +109,65 @@ export const ReportDetailModal: React.FC<ReportDetailModalProps> = ({ reportId }
   const otherItems = (report.licenses?.items || []).filter(item => item.category === 'OTHERS');
   const userAssignments = report.licenses?.userAssignments || [];
 
+  const DETAIL_TABS: { id: 'OVERVIEW' | 'SERVERS' | 'LICENSES' | 'PHOTOS' | 'SECURITY' | 'AUDIT'; label: string; shortLabel: string }[] = [
+    { id: 'OVERVIEW', label: '1. Tickets & SLA', shortLabel: 'Tiket' },
+    { id: 'SERVERS', label: '2. Server Check', shortLabel: 'Server' },
+    { id: 'LICENSES', label: '3. MS365 and Software Others', shortLabel: 'Lisensi' },
+    { id: 'PHOTOS', label: '4. Physical Check Meeting Room', shortLabel: 'Meeting' },
+    { id: 'SECURITY', label: '5. Mailbox and CrowdStrike', shortLabel: 'Mailbox' },
+    { id: 'AUDIT', label: '6. Summary & Audit Trail', shortLabel: 'Summary' },
+  ];
+
+  const currentTabIndex = DETAIL_TABS.findIndex(t => t.id === activeTab);
+  const handlePrevTab = () => {
+    if (currentTabIndex > 0) setActiveTab(DETAIL_TABS[currentTabIndex - 1].id);
+  };
+  const handleNextTab = () => {
+    if (currentTabIndex < DETAIL_TABS.length - 1) setActiveTab(DETAIL_TABS[currentTabIndex + 1].id);
+  };
+
   return (
-    <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 overflow-y-auto print:p-0 print:bg-white print:text-black">
-      <div className="bg-white border border-slate-200 rounded-2xl w-full max-w-5xl my-auto shadow-2xl flex flex-col max-h-[94vh] text-slate-900 print:max-h-none print:border-none print:shadow-none print:bg-white">
+    <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-1 sm:p-4 overflow-y-auto print:p-0 print:bg-white print:text-black">
+      <div className="bg-white border border-slate-200 rounded-xl sm:rounded-2xl w-full max-w-5xl my-auto shadow-2xl flex flex-col max-h-[96vh] sm:max-h-[94vh] text-slate-900 overflow-hidden print:max-h-none print:border-none print:shadow-none print:bg-white">
         {/* Modal Header */}
-        <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between shrink-0 bg-slate-50/80 rounded-t-2xl print:hidden">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-lg bg-blue-100 text-blue-800">
-              <FileCheck className="w-5 h-5" />
+        <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-200 flex items-center justify-between shrink-0 bg-slate-50/80 print:hidden">
+          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+            <div className="p-2 sm:p-2.5 rounded-lg bg-blue-100 text-blue-800 shrink-0">
+              <FileCheck className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
-            <div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <h2 className="text-base font-bold text-slate-900">
-                  PT Donggi-Senoro LNG Daily Operations Report: {report.reportDate}
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                <h2 className="text-xs sm:text-base font-bold text-slate-900 truncate">
+                  PT Donggi-Senoro LNG Daily Report: {report.reportDate}
                 </h2>
                 {report.status === 'APPROVED' && (
-                  <span className="text-[11px] font-mono px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold border border-emerald-200 flex items-center gap-1">
+                  <span className="text-[10px] sm:text-[11px] font-mono px-2 py-0.2 rounded-full bg-emerald-100 text-emerald-800 font-bold border border-emerald-200 flex items-center gap-1 shrink-0">
                     <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Superior Approved
                   </span>
                 )}
                 {report.status === 'SUBMITTED' && (
-                  <span className="text-[11px] font-mono px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 font-bold border border-amber-200 flex items-center gap-1 animate-pulse">
+                  <span className="text-[10px] sm:text-[11px] font-mono px-2 py-0.2 rounded-full bg-amber-100 text-amber-800 font-bold border border-amber-200 flex items-center gap-1 animate-pulse shrink-0">
                     <Clock className="w-3 h-3 text-amber-600" /> Awaiting Superior E-Signature
                   </span>
                 )}
                 {report.status === 'REJECTED' && (
-                  <span className="text-[11px] font-mono px-2.5 py-0.5 rounded-full bg-rose-100 text-rose-800 font-bold border border-rose-200 flex items-center gap-1">
+                  <span className="text-[10px] sm:text-[11px] font-mono px-2 py-0.2 rounded-full bg-rose-100 text-rose-800 font-bold border border-rose-200 flex items-center gap-1 shrink-0">
                     <XCircle className="w-3 h-3 text-rose-600" /> Revision Requested
                   </span>
                 )}
               </div>
-              <div className="text-xs text-slate-500 font-mono mt-0.5">
+              <div className="text-[11px] text-slate-500 font-mono truncate mt-0.5">
                 Ref: {report.id} · Submitter: {report.dutyEngineerName} ({report.dutyEngineerBadge})
               </div>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 sm:gap-2 shrink-0">
             <button
               type="button"
               onClick={handlePrint}
               aria-label="Print report"
-              className="p-2 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors"
+              className="p-1.5 sm:p-2 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors"
               title="Print / Save PDF"
             >
               <Printer className="w-4 h-4" />
@@ -156,15 +176,81 @@ export const ReportDetailModal: React.FC<ReportDetailModalProps> = ({ reportId }
               type="button"
               onClick={closeModal}
               aria-label="Close modal"
-              className="p-2 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors"
+              className="p-1.5 sm:p-2 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors"
             >
               <X className="w-5 h-5" />
             </button>
           </div>
         </div>
 
-        {/* Tab Sub-navigation: 6 Sections */}
-        <div className="px-6 pt-3 border-b border-slate-200 bg-white flex items-center gap-3 overflow-x-auto shrink-0 print:hidden">
+        {/* MOBILE STEPPER: 100% width, No Horizontal Scroll (md:hidden, print:hidden) */}
+        <div className="md:hidden px-3 pt-2.5 pb-2 border-b border-slate-200 bg-slate-50/90 shrink-0 space-y-1.5 print:hidden">
+          {/* 6 Step Segmented Buttons spanning 100% width */}
+          <div className="grid grid-cols-6 gap-1">
+            {DETAIL_TABS.map((tab, idx) => {
+              const isActive = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`py-1.5 px-0.5 rounded-lg text-xs font-bold transition-all flex flex-col items-center justify-center relative ${
+                    isActive
+                      ? 'bg-blue-700 text-white shadow-xs ring-2 ring-blue-600/30'
+                      : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-100'
+                  }`}
+                >
+                  <span className="text-xs">{idx + 1}</span>
+                  <span className={`text-[9px] font-medium truncate max-w-full leading-tight ${isActive ? 'text-blue-100' : 'text-slate-400'}`}>
+                    {tab.shortLabel}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Active Step Indicator & Dropdown Switcher */}
+          <div className="flex items-center justify-between gap-1.5">
+            <button
+              type="button"
+              disabled={currentTabIndex === 0}
+              onClick={handlePrevTab}
+              className="p-1.5 rounded-lg bg-white border border-slate-200 text-slate-700 disabled:opacity-30 disabled:pointer-events-none hover:bg-slate-100 shrink-0"
+              title="Bagian Sebelumnya"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+
+            {/* Dropdown Section Selector */}
+            <div className="relative flex-1 min-w-0">
+              <select
+                value={activeTab}
+                onChange={e => setActiveTab(e.target.value as any)}
+                className="w-full bg-white border border-slate-300 rounded-lg py-1.5 pl-2.5 pr-7 text-xs font-bold text-slate-800 appearance-none focus:outline-none focus:border-blue-600 truncate"
+              >
+                {DETAIL_TABS.map((tab, idx) => (
+                  <option key={tab.id} value={tab.id}>
+                    Bagian {idx + 1}/6: {tab.label}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2 top-2.5 pointer-events-none" />
+            </div>
+
+            <button
+              type="button"
+              disabled={currentTabIndex === DETAIL_TABS.length - 1}
+              onClick={handleNextTab}
+              className="p-1.5 rounded-lg bg-white border border-slate-200 text-slate-700 disabled:opacity-30 disabled:pointer-events-none hover:bg-slate-100 shrink-0"
+              title="Bagian Selanjutnya"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+
+        {/* DESKTOP TABS: Visible on md and up (hidden md:flex print:hidden) */}
+        <div className="hidden md:flex px-6 pt-3 border-b border-slate-200 bg-white items-center gap-2 overflow-x-auto shrink-0 print:hidden">
           <button
             type="button"
             onClick={() => setActiveTab('OVERVIEW')}
@@ -243,7 +329,7 @@ export const ReportDetailModal: React.FC<ReportDetailModalProps> = ({ reportId }
         </div>
 
         {/* Scrollable Content Body */}
-        <div className="p-6 overflow-y-auto space-y-6 flex-1 bg-slate-50/40 print:p-8 print:bg-white">
+        <div className="p-3.5 sm:p-6 overflow-y-auto space-y-6 flex-1 bg-slate-50/40 print:p-8 print:bg-white">
           {/* Printable Official Header */}
           <div className="hidden print:block border-b-2 border-slate-900 pb-4 mb-4">
             <div className="flex justify-between items-center">
@@ -422,7 +508,8 @@ export const ReportDetailModal: React.FC<ReportDetailModalProps> = ({ reportId }
                       </div>
                     </div>
 
-                    <div className="border border-slate-200 rounded-xl overflow-x-auto">
+                    {/* Desktop Table View */}
+                    <div className="hidden md:block border border-slate-200 rounded-xl overflow-x-auto">
                       <table className="w-full text-left text-xs">
                         <thead className="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200">
                           <tr>
@@ -465,6 +552,51 @@ export const ReportDetailModal: React.FC<ReportDetailModalProps> = ({ reportId }
                           ))}
                         </tbody>
                       </table>
+                    </div>
+
+                    {/* Mobile Stacked Card View (No horizontal scrolling) */}
+                    <div className="block md:hidden space-y-2.5">
+                      {filteredSlaTickets.map(t => (
+                        <div
+                          key={t.id}
+                          className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/70 space-y-2 text-xs"
+                        >
+                          <div className="flex items-center justify-between pb-1.5 border-b border-slate-200/80">
+                            <span className="font-mono font-bold text-blue-700 text-xs">{t.ticketNumber}</span>
+                            <span
+                              className={`px-2 py-0.5 rounded text-[10px] font-bold font-mono ${
+                                t.slaStatus === 'SLA_BREACHED'
+                                  ? 'bg-rose-100 text-rose-800 border border-rose-200'
+                                  : 'bg-amber-100 text-amber-800 border border-amber-200'
+                              }`}
+                            >
+                              {t.slaStatus === 'SLA_BREACHED' ? 'BREACHED' : 'AT RISK'}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-[10px] text-slate-500 uppercase tracking-wider block font-semibold">Subject</span>
+                            <div className="font-semibold text-slate-900 mt-0.5">{t.subject}</div>
+                          </div>
+                          <div className="grid grid-cols-2 gap-2 pt-1 text-[11px]">
+                            <div>
+                              <span className="text-[10px] text-slate-500 block">Requester:</span>
+                              <span className="font-medium text-slate-800 truncate block">{t.requester}</span>
+                            </div>
+                            <div>
+                              <span className="text-[10px] text-slate-500 block">Category:</span>
+                              <span className="font-medium text-slate-800">{t.category}</span>
+                            </div>
+                            <div>
+                              <span className="text-[10px] text-slate-500 block">Over SLA:</span>
+                              <span className="font-mono font-bold text-rose-700">{t.overSlaTime}</span>
+                            </div>
+                            <div>
+                              <span className="text-[10px] text-slate-500 block">Technician:</span>
+                              <span className="font-semibold text-slate-800">{t.technician}</span>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 )}
@@ -662,7 +794,8 @@ export const ReportDetailModal: React.FC<ReportDetailModalProps> = ({ reportId }
                   </span>
                 </div>
 
-                <div className="overflow-x-auto">
+                {/* Desktop Table View */}
+                <div className="hidden md:block overflow-x-auto">
                   <table className="w-full text-left text-xs">
                     <thead className="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200">
                       <tr>
@@ -712,6 +845,54 @@ export const ReportDetailModal: React.FC<ReportDetailModalProps> = ({ reportId }
                       ))}
                     </tbody>
                   </table>
+                </div>
+
+                {/* Mobile Stacked Card View (No horizontal scrolling) */}
+                <div className="block md:hidden space-y-2.5">
+                  {report.servers.map(server => (
+                    <div
+                      key={server.id}
+                      className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/70 space-y-2 text-xs"
+                    >
+                      <div className="flex items-center justify-between pb-1.5 border-b border-slate-200/80">
+                        <span className="font-semibold text-slate-900 text-xs">{server.name}</span>
+                        <span
+                          className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold border inline-flex items-center gap-1 ${
+                            server.status === 'ONLINE'
+                              ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                              : server.status === 'DEGRADED'
+                              ? 'bg-amber-50 text-amber-800 border-amber-200'
+                              : 'bg-rose-50 text-rose-800 border-rose-200'
+                          }`}
+                        >
+                          <span
+                            className={`w-1.5 h-1.5 rounded-full ${
+                              server.status === 'ONLINE'
+                                ? 'bg-emerald-600'
+                                : server.status === 'DEGRADED'
+                                ? 'bg-amber-600'
+                                : 'bg-rose-600'
+                            }`}
+                          />
+                          {server.status === 'ONLINE'
+                            ? 'Online'
+                            : server.status === 'DEGRADED'
+                            ? 'Degraded'
+                            : 'Offline'}
+                        </span>
+                      </div>
+                      <div className="text-[11px] text-slate-600">
+                        <span className="text-[10px] text-slate-500 block">Lokasi Penempatan:</span>
+                        <span className="font-medium text-slate-800">{server.location}</span>
+                      </div>
+                      {server.notes && (
+                        <div className="text-[11px] text-slate-600 pt-1 border-t border-slate-200/60">
+                          <span className="text-[10px] text-slate-500 block">Catatan:</span>
+                          <span className="italic text-slate-700">{server.notes}</span>
+                        </div>
+                      )}
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>
@@ -794,7 +975,8 @@ export const ReportDetailModal: React.FC<ReportDetailModalProps> = ({ reportId }
                   </div>
                 </div>
 
-                <div className="border border-slate-200 rounded-xl overflow-x-auto">
+                {/* Desktop Table View */}
+                <div className="hidden md:block border border-slate-200 rounded-xl overflow-x-auto">
                   <table className="w-full text-left text-xs">
                     <thead className="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200">
                       <tr>
@@ -831,6 +1013,47 @@ export const ReportDetailModal: React.FC<ReportDetailModalProps> = ({ reportId }
                       )}
                     </tbody>
                   </table>
+                </div>
+
+                {/* Mobile Stacked Card View (No horizontal scrolling) */}
+                <div className="block md:hidden space-y-2.5">
+                  {userAssignments.length === 0 ? (
+                    <div className="p-4 text-center text-xs text-slate-400 font-mono bg-slate-50 rounded-xl border border-slate-200">
+                      Tidak ada penugasan lisensi baru pada shift ini.
+                    </div>
+                  ) : (
+                    userAssignments.map(asg => (
+                      <div
+                        key={asg.id}
+                        className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/70 space-y-2 text-xs"
+                      >
+                        <div className="flex items-center justify-between pb-1.5 border-b border-slate-200/80">
+                          <span className="font-semibold text-slate-900 text-xs">{asg.userName}</span>
+                          <span className="font-mono text-blue-700 font-bold bg-blue-50 px-2 py-0.5 rounded text-[10px] border border-blue-200">
+                            {asg.softwareName}
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2 text-[11px]">
+                          <div>
+                            <span className="text-[10px] text-slate-500 block">Departemen:</span>
+                            <span className="font-medium text-slate-800">{asg.department}</span>
+                          </div>
+                          <div>
+                            <span className="text-[10px] text-slate-500 block">Ref Tiket:</span>
+                            <span className="font-mono text-slate-700 font-semibold">{asg.ticketRef}</span>
+                          </div>
+                          <div>
+                            <span className="text-[10px] text-slate-500 block">Tanggal:</span>
+                            <span className="font-mono text-slate-600">{asg.assignedDate}</span>
+                          </div>
+                          <div>
+                            <span className="text-[10px] text-slate-500 block">Petugas:</span>
+                            <span className="font-medium text-slate-700">{asg.assignedBy}</span>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
                 </div>
               </div>
             </div>
@@ -917,7 +1140,8 @@ export const ReportDetailModal: React.FC<ReportDetailModalProps> = ({ reportId }
                   <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700">
                     Detail Insiden / Tindakan Terkait
                   </h4>
-                  <div className="border border-slate-200 rounded-xl overflow-x-auto">
+                  {/* Desktop Table View */}
+                  <div className="hidden md:block border border-slate-200 rounded-xl overflow-x-auto">
                     <table className="w-full text-left text-xs">
                       <thead className="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200">
                         <tr>
@@ -962,6 +1186,51 @@ export const ReportDetailModal: React.FC<ReportDetailModalProps> = ({ reportId }
                         )}
                       </tbody>
                     </table>
+                  </div>
+
+                  {/* Mobile Stacked Card View (No horizontal scrolling) */}
+                  <div className="block md:hidden space-y-2.5">
+                    {(!report.mailboxCrowdstrike?.details || report.mailboxCrowdstrike.details.length === 0) ? (
+                      <div className="p-4 text-center text-xs text-slate-400 font-mono bg-slate-50 rounded-xl border border-slate-200">
+                        Tidak ada rincian peringatan mailbox atau CrowdStrike yang perlu ditindaklanjuti.
+                      </div>
+                    ) : (
+                      report.mailboxCrowdstrike.details.map(item => (
+                        <div
+                          key={item.id}
+                          className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/70 space-y-2 text-xs"
+                        >
+                          <div className="flex items-center justify-between pb-1.5 border-b border-slate-200/80">
+                            <span className="font-semibold text-slate-900 text-xs">{item.targetUserOrHost}</span>
+                            <span className={`text-[10px] font-mono px-2 py-0.5 rounded font-bold border ${
+                              item.type === 'CROWDSTRIKE_MALICIOUS'
+                                ? 'bg-rose-100 text-rose-800 border-rose-300'
+                                : item.type === 'MAILBOX_FULL'
+                                ? 'bg-red-50 text-red-700 border-red-200'
+                                : 'bg-amber-50 text-amber-800 border-amber-200'
+                            }`}>
+                              {item.type === 'MAILBOX_ALMOST_FULL'
+                                ? 'Almost Full'
+                                : item.type === 'MAILBOX_FULL'
+                                ? 'Mailbox Full'
+                                : item.type === 'CROWDSTRIKE_MALICIOUS'
+                                ? 'CS Malicious'
+                                : 'CS Inactive'}
+                            </span>
+                          </div>
+                          <div className="grid grid-cols-2 gap-2 text-[11px]">
+                            <div>
+                              <span className="text-[10px] text-slate-500 block">Departemen/Lokasi:</span>
+                              <span className="font-medium text-slate-800">{item.departmentOrLocation || '-'}</span>
+                            </div>
+                            <div>
+                              <span className="text-[10px] text-slate-500 block">Catatan/Tindakan:</span>
+                              <span className="text-slate-700">{item.notes || '-'}</span>
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    )}
                   </div>
                 </div>
 

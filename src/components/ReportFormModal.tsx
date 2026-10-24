@@ -25,6 +25,9 @@ import {
   Package,
   Wrench,
   UserPlus,
+  ChevronLeft,
+  ChevronRight,
+  ChevronDown,
 } from 'lucide-react';
 import {
   TicketMetrics,
@@ -621,25 +624,46 @@ export const ReportFormModal: React.FC<ReportFormModalProps> = ({ date }) => {
   const ms365Items = (licenses.items || []).filter(item => item.category === 'MS365');
   const otherLicenseItems = (licenses.items || []).filter(item => item.category === 'OTHERS');
 
+  const SECTIONS: { id: FormSection; label: string; shortLabel: string; isRequired?: boolean }[] = [
+    { id: 'TICKETS', label: '1. Tickets & SLA', shortLabel: 'Tiket', isRequired: true },
+    { id: 'SERVERS', label: '2. Server Check', shortLabel: 'Server', isRequired: true },
+    { id: 'LICENSES', label: '3. MS365 and Software Others', shortLabel: 'Lisensi' },
+    { id: 'MEETING_ROOMS', label: '4. Physical Check Meeting Room', shortLabel: 'Meeting' },
+    { id: 'MAILBOX_CROWDSTRIKE', label: '5. Mailbox and CrowdStrike', shortLabel: 'Mailbox' },
+    { id: 'SUMMARY', label: '6. Summary', shortLabel: 'Summary' },
+  ];
+
+  const currentSectionIndex = SECTIONS.findIndex(s => s.id === activeSection);
+  const handlePrevSection = () => {
+    if (currentSectionIndex > 0) {
+      setActiveSection(SECTIONS[currentSectionIndex - 1].id);
+    }
+  };
+  const handleNextSection = () => {
+    if (currentSectionIndex < SECTIONS.length - 1) {
+      setActiveSection(SECTIONS[currentSectionIndex + 1].id);
+    }
+  };
+
   return (
-    <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
-      <div className="bg-white border border-slate-200 rounded-2xl w-full max-w-5xl my-auto shadow-2xl flex flex-col max-h-[92vh] text-slate-900">
+    <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-1 sm:p-4 overflow-y-auto">
+      <div className="bg-white border border-slate-200 rounded-xl sm:rounded-2xl w-full max-w-5xl my-auto shadow-2xl flex flex-col max-h-[96vh] sm:max-h-[92vh] text-slate-900 overflow-hidden">
         {/* Header */}
-        <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between shrink-0 bg-slate-50/80 rounded-t-2xl">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg bg-blue-700 text-white flex items-center justify-center font-bold text-sm shadow-xs">
+        <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-200 flex items-center justify-between shrink-0 bg-slate-50/80">
+          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-blue-700 text-white flex items-center justify-center font-bold text-xs sm:text-sm shadow-xs shrink-0">
               DR
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-base font-bold text-slate-900">
-                  Daily Shift Report Entry: {date}
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                <h2 className="text-xs sm:text-base font-bold text-slate-900 truncate">
+                  Daily Shift Report: {date}
                 </h2>
-                <span className="text-[11px] font-mono px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 font-semibold border border-blue-200">
+                <span className="text-[10px] sm:text-[11px] font-mono px-2 py-0.2 rounded-full bg-blue-100 text-blue-800 font-semibold border border-blue-200 shrink-0">
                   {currentUser.role === 'ADMINISTRATOR' ? 'Super Admin Mode' : 'Duty Engineer'}
                 </span>
               </div>
-              <div className="text-xs text-slate-500 font-mono mt-0.5">
+              <div className="text-[11px] text-slate-500 font-mono truncate mt-0.5">
                 Submitter: {currentUser.name} ({currentUser.badgeNumber}) · {currentUser.shift}
               </div>
             </div>
@@ -649,14 +673,85 @@ export const ReportFormModal: React.FC<ReportFormModalProps> = ({ date }) => {
             type="button"
             onClick={closeModal}
             aria-label="Close modal"
-            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-800 hover:bg-slate-200 transition-colors"
+            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-800 hover:bg-slate-200 transition-colors shrink-0"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Section Navigation Tabs: 6 Sections */}
-        <div className="px-6 pt-3 border-b border-slate-200 bg-white flex items-center gap-2 overflow-x-auto shrink-0">
+        {/* MOBILE STEPPER: 100% width, No Horizontal Scroll (md:hidden) */}
+        <div className="md:hidden px-3 pt-2.5 pb-2 border-b border-slate-200 bg-slate-50/90 shrink-0 space-y-1.5">
+          {/* 6 Step Segmented Buttons spanning 100% width */}
+          <div className="grid grid-cols-6 gap-1">
+            {SECTIONS.map((sec, idx) => {
+              const isActive = activeSection === sec.id;
+              return (
+                <button
+                  key={sec.id}
+                  type="button"
+                  onClick={() => setActiveSection(sec.id)}
+                  className={`py-1.5 px-0.5 rounded-lg text-xs font-bold transition-all flex flex-col items-center justify-center relative ${
+                    isActive
+                      ? 'bg-blue-700 text-white shadow-xs ring-2 ring-blue-600/30'
+                      : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-100'
+                  }`}
+                >
+                  <span className="flex items-center gap-0.5 text-xs">
+                    {idx + 1}
+                    {sec.isRequired && (
+                      <span className={`text-[11px] leading-none ${isActive ? 'text-amber-300' : 'text-rose-600'}`}>*</span>
+                    )}
+                  </span>
+                  <span className={`text-[9px] font-medium truncate max-w-full leading-tight ${isActive ? 'text-blue-100' : 'text-slate-400'}`}>
+                    {sec.shortLabel}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Active Step Indicator & Dropdown Switcher */}
+          <div className="flex items-center justify-between gap-1.5">
+            <button
+              type="button"
+              disabled={currentSectionIndex === 0}
+              onClick={handlePrevSection}
+              className="p-1.5 rounded-lg bg-white border border-slate-200 text-slate-700 disabled:opacity-30 disabled:pointer-events-none hover:bg-slate-100 shrink-0"
+              title="Bagian Sebelumnya"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+
+            {/* Dropdown Section Selector */}
+            <div className="relative flex-1 min-w-0">
+              <select
+                value={activeSection}
+                onChange={e => setActiveSection(e.target.value as FormSection)}
+                className="w-full bg-white border border-slate-300 rounded-lg py-1.5 pl-2.5 pr-7 text-xs font-bold text-slate-800 appearance-none focus:outline-none focus:border-blue-600 truncate"
+              >
+                {SECTIONS.map((sec, idx) => (
+                  <option key={sec.id} value={sec.id}>
+                    Langkah {idx + 1}/6: {sec.label}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2 top-2.5 pointer-events-none" />
+            </div>
+
+            <button
+              type="button"
+              disabled={currentSectionIndex === SECTIONS.length - 1}
+              onClick={handleNextSection}
+              className="p-1.5 rounded-lg bg-white border border-slate-200 text-slate-700 disabled:opacity-30 disabled:pointer-events-none hover:bg-slate-100 shrink-0"
+              title="Bagian Selanjutnya"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+
+        {/* DESKTOP TABS: Visible on md and up (hidden md:flex) */}
+        <div className="hidden md:flex px-6 pt-3 border-b border-slate-200 bg-white items-center gap-1.5 overflow-x-auto shrink-0">
           <button
             type="button"
             onClick={() => setActiveSection('TICKETS')}
@@ -765,7 +860,7 @@ export const ReportFormModal: React.FC<ReportFormModalProps> = ({ date }) => {
         </div>
 
         {/* Modal Scrollable Body */}
-        <div className="p-6 overflow-y-auto space-y-6 flex-1 bg-slate-50/50">
+        <div className="p-3.5 sm:p-6 overflow-y-auto space-y-6 flex-1 bg-slate-50/50">
           {/* TAB 1: TICKETS & SLA */}
           {activeSection === 'TICKETS' && (
             <div className="space-y-6">
@@ -1333,42 +1428,51 @@ export const ReportFormModal: React.FC<ReportFormModalProps> = ({ date }) => {
                         </div>
 
                         {/* Interactive Full-Width 3-Segment Selector */}
-                        <div className="grid grid-cols-3 gap-1.5 p-1 bg-slate-100 rounded-lg border border-slate-200/80">
+                        <div className="grid grid-cols-3 gap-1 p-1 bg-slate-100 rounded-lg border border-slate-200/80">
                           <button
                             type="button"
                             onClick={() => toggleServerStatus(server.id, 'ONLINE')}
-                            className={`py-1.5 px-2 rounded-md text-xs font-semibold transition-all flex items-center justify-center gap-1.5 ${
+                            className={`py-1.5 px-1 sm:px-2 rounded-md text-[11px] sm:text-xs font-semibold transition-all flex items-center justify-center gap-1 ${
                               isOnline
                                 ? 'bg-emerald-600 text-white shadow-xs font-bold ring-1 ring-emerald-700/30'
                                 : 'text-slate-600 hover:text-slate-900 hover:bg-white/70'
                             }`}
                           >
                             <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
-                            <span className="truncate">Online (Normal)</span>
+                            <span className="truncate">
+                              <span className="sm:hidden">Online</span>
+                              <span className="hidden sm:inline">Online (Normal)</span>
+                            </span>
                           </button>
                           <button
                             type="button"
                             onClick={() => toggleServerStatus(server.id, 'DEGRADED')}
-                            className={`py-1.5 px-2 rounded-md text-xs font-semibold transition-all flex items-center justify-center gap-1.5 ${
+                            className={`py-1.5 px-1 sm:px-2 rounded-md text-[11px] sm:text-xs font-semibold transition-all flex items-center justify-center gap-1 ${
                               isDegraded
                                 ? 'bg-amber-500 text-white shadow-xs font-bold ring-1 ring-amber-600/30'
                                 : 'text-slate-600 hover:text-slate-900 hover:bg-white/70'
                             }`}
                           >
                             <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-                            <span className="truncate">Degraded (Perhatian)</span>
+                            <span className="truncate">
+                              <span className="sm:hidden">Degraded</span>
+                              <span className="hidden sm:inline">Degraded (Perhatian)</span>
+                            </span>
                           </button>
                           <button
                             type="button"
                             onClick={() => toggleServerStatus(server.id, 'OFFLINE')}
-                            className={`py-1.5 px-2 rounded-md text-xs font-semibold transition-all flex items-center justify-center gap-1.5 ${
+                            className={`py-1.5 px-1 sm:px-2 rounded-md text-[11px] sm:text-xs font-semibold transition-all flex items-center justify-center gap-1 ${
                               isOffline
                                 ? 'bg-rose-600 text-white shadow-xs font-bold ring-1 ring-rose-700/30'
                                 : 'text-slate-600 hover:text-slate-900 hover:bg-white/70'
                             }`}
                           >
                             <ShieldAlert className="w-3.5 h-3.5 shrink-0" />
-                            <span className="truncate">Offline (Gangguan)</span>
+                            <span className="truncate">
+                              <span className="sm:hidden">Offline</span>
+                              <span className="hidden sm:inline">Offline (Gangguan)</span>
+                            </span>
                           </button>
                         </div>
 
@@ -1638,8 +1742,8 @@ export const ReportFormModal: React.FC<ReportFormModalProps> = ({ date }) => {
                   </div>
                 </form>
 
-                {/* Table of assignments */}
-                <div className="border border-slate-200 rounded-xl overflow-hidden">
+                {/* DESKTOP: Table of assignments (hidden md:block) */}
+                <div className="hidden md:block border border-slate-200 rounded-xl overflow-hidden">
                   <table className="w-full text-left text-xs">
                     <thead className="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200">
                       <tr>
@@ -1685,6 +1789,41 @@ export const ReportFormModal: React.FC<ReportFormModalProps> = ({ date }) => {
                       )}
                     </tbody>
                   </table>
+                </div>
+
+                {/* MOBILE: Stacked Cards (block md:hidden, no horizontal scroll) */}
+                <div className="md:hidden space-y-2.5">
+                  {(licenses.userAssignments || []).length === 0 ? (
+                    <div className="py-4 text-center text-slate-400 font-mono text-xs bg-slate-50 rounded-xl border border-dashed border-slate-200">
+                      Belum ada penugasan lisensi baru pada shift hari ini.
+                    </div>
+                  ) : (
+                    (licenses.userAssignments || []).map(asg => (
+                      <div key={asg.id} className="p-3 rounded-xl border border-slate-200 bg-white shadow-2xs space-y-2">
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <span className="font-bold text-slate-900 text-xs block">{asg.userName}</span>
+                            <span className="text-[11px] text-slate-500">{asg.department}</span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteAssignment(asg.id)}
+                            className="text-rose-600 hover:text-rose-700 p-1 px-2 rounded-lg bg-rose-50 border border-rose-200 flex items-center gap-1 text-[11px] font-semibold shrink-0"
+                            title="Hapus penugasan"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            <span>Hapus</span>
+                          </button>
+                        </div>
+                        <div className="pt-1 border-t border-slate-100 flex items-center justify-between text-[11px]">
+                          <span className="font-mono text-blue-700 font-bold bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
+                            {asg.softwareName}
+                          </span>
+                          <span className="text-slate-500 font-mono">Ref: {asg.ticketRef}</span>
+                        </div>
+                      </div>
+                    ))
+                  )}
                 </div>
               </div>
             </div>
@@ -2027,8 +2166,8 @@ export const ReportFormModal: React.FC<ReportFormModalProps> = ({ date }) => {
                   </div>
                 </form>
 
-                {/* Table Details with Inline Edit */}
-                <div className="border border-slate-200 rounded-xl overflow-x-auto">
+                {/* DESKTOP: Table Details with Inline Edit (hidden md:block) */}
+                <div className="hidden md:block border border-slate-200 rounded-xl overflow-x-auto">
                   <table className="w-full text-left text-xs min-w-[700px]">
                     <thead className="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200">
                       <tr>
@@ -2123,6 +2262,106 @@ export const ReportFormModal: React.FC<ReportFormModalProps> = ({ date }) => {
                       )}
                     </tbody>
                   </table>
+                </div>
+
+                {/* MOBILE: Stacked Cards (block md:hidden, 100% width, No Horizontal Scroll) */}
+                <div className="md:hidden space-y-3">
+                  {(mailboxMetrics.details || []).length === 0 ? (
+                    <div className="py-5 px-4 text-center text-slate-400 font-sans bg-slate-50 rounded-xl border border-dashed border-slate-200">
+                      Semua kuota mailbox dan agent CrowdStrike dalam kondisi nominal (0 insiden).<br />
+                      <span className="text-[11px] text-slate-400 mt-1 inline-block">
+                        Ubah nilai pada kartu di atas atau klik tombol Tambah Rincian untuk mencatat insiden.
+                      </span>
+                    </div>
+                  ) : (
+                    (mailboxMetrics.details || []).map((item, index) => (
+                      <div
+                        key={item.id}
+                        className="p-3.5 rounded-xl border border-slate-200 bg-white shadow-2xs space-y-2.5"
+                      >
+                        <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[10px] font-mono font-bold text-slate-500">#{index + 1}</span>
+                            <span
+                              className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold inline-block ${
+                                item.type === 'MAILBOX_FULL' || item.type === 'CROWDSTRIKE_MALICIOUS'
+                                  ? 'bg-rose-100 text-rose-800 border border-rose-200'
+                                  : item.type === 'MAILBOX_ALMOST_FULL'
+                                  ? 'bg-amber-100 text-amber-800 border border-amber-200'
+                                  : 'bg-slate-100 text-slate-800 border border-slate-200'
+                              }`}
+                            >
+                              {item.type === 'MAILBOX_ALMOST_FULL'
+                                ? 'Mailbox Almost Full'
+                                : item.type === 'MAILBOX_FULL'
+                                ? 'Mailbox Full'
+                                : item.type === 'CROWDSTRIKE_MALICIOUS'
+                                ? 'Crowdstrike Malicious'
+                                : 'Crowdstrike Inactive'}
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteMailboxDetail(item.id)}
+                            className="text-rose-600 hover:text-rose-700 p-1 px-2 rounded-lg bg-rose-50 border border-rose-200 flex items-center gap-1 text-[11px] font-semibold"
+                            title="Hapus baris ini"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            <span>Hapus</span>
+                          </button>
+                        </div>
+
+                        <div>
+                          <label className="text-[11px] font-semibold text-slate-700 block mb-1">
+                            User Email / Hostname *
+                          </label>
+                          <input
+                            type="text"
+                            placeholder={
+                              item.type.startsWith('MAILBOX')
+                                ? 'user@donggi-senoro.com'
+                                : 'Nama PC / Laptop (mis. LT-USO-04)'
+                            }
+                            value={item.targetUserOrHost}
+                            onChange={e =>
+                              handleUpdateMailboxDetail(item.id, { targetUserOrHost: e.target.value })
+                            }
+                            className={`w-full bg-slate-50 border rounded-lg p-2.5 text-xs text-slate-900 font-mono focus:bg-white focus:outline-none focus:border-blue-600 ${
+                              !item.targetUserOrHost.trim() ? 'border-amber-400 bg-amber-50/30' : 'border-slate-300'
+                            }`}
+                          />
+                        </div>
+
+                        <div>
+                          <label className="text-[11px] font-semibold text-slate-700 block mb-1">
+                            Departemen / Lokasi
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="Contoh: Site Uso Operations"
+                            value={item.departmentOrLocation || ''}
+                            onChange={e =>
+                              handleUpdateMailboxDetail(item.id, { departmentOrLocation: e.target.value })
+                            }
+                            className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 text-xs text-slate-900 focus:bg-white focus:outline-none focus:border-blue-600"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="text-[11px] font-semibold text-slate-700 block mb-1">
+                            Status / Keterangan Tindakan
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="Keterangan tindakan pemantauan..."
+                            value={item.notes || ''}
+                            onChange={e => handleUpdateMailboxDetail(item.id, { notes: e.target.value })}
+                            className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 text-xs text-slate-900 focus:bg-white focus:outline-none focus:border-blue-600"
+                          />
+                        </div>
+                      </div>
+                    ))
+                  )}
                 </div>
 
                 {/* Overall Notes */}
