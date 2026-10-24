@@ -55,16 +55,12 @@ export const InfrastructureFleetView: React.FC = () => {
   const [serverFormData, setServerFormData] = useState<{
     name: string;
     location: string;
-    role: string;
     status: 'ONLINE' | 'DEGRADED' | 'OFFLINE';
-    latencyMs: number;
     notes: string;
   }>({
     name: '',
     location: 'Site Uso Server Room',
-    role: '',
     status: 'ONLINE',
-    latencyMs: 2,
     notes: '',
   });
 
@@ -154,9 +150,7 @@ export const InfrastructureFleetView: React.FC = () => {
     setServerFormData({
       name: '',
       location: 'Site Uso Server Room',
-      role: '',
       status: 'ONLINE',
-      latencyMs: 2,
       notes: '',
     });
     setIsServerModalOpen(true);
@@ -167,9 +161,7 @@ export const InfrastructureFleetView: React.FC = () => {
     setServerFormData({
       name: server.name,
       location: server.location,
-      role: server.role,
       status: server.status,
-      latencyMs: server.latencyMs,
       notes: server.notes || '',
     });
     setIsServerModalOpen(true);
@@ -182,8 +174,6 @@ export const InfrastructureFleetView: React.FC = () => {
       return;
     }
 
-    const nowTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
     if (editingServerId) {
       const existing = servers.find(s => s.id === editingServerId);
       if (existing) {
@@ -191,21 +181,15 @@ export const InfrastructureFleetView: React.FC = () => {
           ...existing,
           name: serverFormData.name.trim(),
           location: serverFormData.location.trim(),
-          role: serverFormData.role.trim(),
           status: serverFormData.status,
-          latencyMs: Number(serverFormData.latencyMs) || 1,
           notes: serverFormData.notes.trim(),
-          lastChecked: nowTime,
         });
       }
     } else {
       addServer({
         name: serverFormData.name.trim(),
         location: serverFormData.location.trim(),
-        role: serverFormData.role.trim() || 'General Production Node',
         status: serverFormData.status,
-        latencyMs: Number(serverFormData.latencyMs) || 1,
-        lastChecked: nowTime,
         notes: serverFormData.notes.trim(),
       });
     }
@@ -541,23 +525,21 @@ export const InfrastructureFleetView: React.FC = () => {
                           : 'bg-rose-100 text-rose-800 border-rose-300'
                       }`}
                     >
-                      {server.status}
+                      {server.status === 'ONLINE'
+                        ? 'Online (Normal)'
+                        : server.status === 'DEGRADED'
+                        ? 'Degraded (Perhatian)'
+                        : 'Offline (Gangguan)'}
                     </span>
                   </div>
 
-                  <p className="text-[11px] text-slate-600 font-sans mt-2">
-                    Peran: {server.role}
-                  </p>
-
-                  {server.notes && (
-                    <p className="text-[10px] text-slate-500 font-mono mt-1">
-                      Catatan: {server.notes}
-                    </p>
-                  )}
+                  <div className="text-[11px] text-slate-600 bg-white p-2.5 rounded-lg border border-slate-100 mt-2">
+                    <span className="font-semibold text-slate-700 block text-[10px]">Catatan:</span>
+                    {server.notes ? server.notes : <span className="text-slate-400 italic">Tidak ada catatan</span>}
+                  </div>
                 </div>
 
-                <div className="pt-2 border-t border-slate-200/80 flex items-center justify-between text-[10px] font-mono text-slate-500">
-                  <span>Latency: {server.latencyMs}ms</span>
+                <div className="pt-2 border-t border-slate-200/80 flex items-center justify-end text-[10px] font-mono text-slate-500">
                   <div className="flex items-center gap-1">
                     <button
                       type="button"
@@ -843,7 +825,7 @@ export const InfrastructureFleetView: React.FC = () => {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <label className="text-xs font-bold text-slate-700">Lokasi Penempatan *</label>
                   <input
@@ -875,37 +857,11 @@ export const InfrastructureFleetView: React.FC = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-700">Peran / Service *</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="Contoh: Active Directory / SCADA Gateway"
-                    value={serverFormData.role}
-                    onChange={e => setServerFormData({ ...serverFormData, role: e.target.value })}
-                    className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-emerald-600"
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-700">Latency Rata-rata (ms)</label>
-                  <input
-                    type="number"
-                    min="0"
-                    placeholder="Contoh: 2"
-                    value={serverFormData.latencyMs}
-                    onChange={e => setServerFormData({ ...serverFormData, latencyMs: Number(e.target.value) })}
-                    className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-emerald-600 font-mono"
-                  />
-                </div>
-              </div>
-
               <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-700">Catatan Pemantauan</label>
+                <label className="text-xs font-bold text-slate-700">Catatan</label>
                 <textarea
-                  rows={2}
-                  placeholder="Catatan telemetry, port switch, dsb..."
+                  rows={3}
+                  placeholder="Catatan kondisi operasional server..."
                   value={serverFormData.notes}
                   onChange={e => setServerFormData({ ...serverFormData, notes: e.target.value })}
                   className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-emerald-600"

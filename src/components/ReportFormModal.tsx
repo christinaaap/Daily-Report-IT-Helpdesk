@@ -126,7 +126,7 @@ export const ReportFormModal: React.FC<ReportFormModalProps> = ({ date }) => {
   const [isAddServerOpen, setIsAddServerOpen] = useState(false);
   const [newServerName, setNewServerName] = useState('');
   const [newServerLocation, setNewServerLocation] = useState('Site Uso Server Room');
-  const [newServerRole, setNewServerRole] = useState('');
+  const [newServerNotes, setNewServerNotes] = useState('');
 
   // Section 3: MS365 dan Software Others state
   const [licenses, setLicenses] = useState<LicenseStatus>(() => ({
@@ -268,17 +268,14 @@ export const ReportFormModal: React.FC<ReportFormModalProps> = ({ date }) => {
     const newSrvData = {
       name: newServerName.trim(),
       location: newServerLocation.trim(),
-      role: newServerRole.trim() || 'Production Node',
       status: 'ONLINE' as const,
-      latencyMs: 1,
-      lastChecked: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      notes: 'Baru ditambahkan ke master server.',
+      notes: newServerNotes.trim() || 'Baru ditambahkan ke master server.',
     };
     addServer(newSrvData);
     setServers(prev => [...prev, { ...newSrvData, id: `srv-${Date.now()}` }]);
     setIsAddServerOpen(false);
     setNewServerName('');
-    setNewServerRole('');
+    setNewServerNotes('');
     showToast('Server berhasil ditambahkan ke master server.', 'success');
   };
 
@@ -1025,7 +1022,7 @@ export const ReportFormModal: React.FC<ReportFormModalProps> = ({ date }) => {
                     <strong className="text-blue-900 block font-bold text-sm mb-0.5">
                       Section 2: Server Check
                     </strong>
-                    Daftar server master terdata oleh Administrator melalui tab "Infrastructure Fleet" (Server Check Management). Helpdesk / Duty Engineer yang bertugas hari ini melakukan inspeksi status (ONLINE / DEGRADED / OFFLINE), memeriksa latency (ms), serta mencatat kondisi server operasional.
+                    Daftar server master terdata oleh Administrator melalui tab "Infrastructure Fleet" (Server Check Management). Petugas Helpdesk yang bertugas melakukan verifikasi status operasional (Online, Degraded, Offline) serta mencatat keterangan kondisi server.
                   </div>
                 </div>
 
@@ -1069,82 +1066,60 @@ export const ReportFormModal: React.FC<ReportFormModalProps> = ({ date }) => {
                       key={server.id}
                       className="p-4 rounded-xl border border-slate-200 bg-white shadow-2xs space-y-3"
                     >
-                      <div className="flex items-start justify-between gap-2">
+                      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
                         <div>
                           <div className="text-xs font-bold text-slate-900">{server.name}</div>
                           <div className="text-[11px] text-slate-500 font-medium">{server.location}</div>
-                          <div className="text-[10px] text-slate-400 font-mono mt-0.5">{server.role}</div>
                         </div>
 
-                        {/* Status Toggle Buttons */}
-                        <div className="flex items-center gap-1 shrink-0">
+                        {/* Status Toggle Buttons: 3 Pilihan Sesuai Permintaan */}
+                        <div className="flex items-center gap-1 shrink-0 flex-wrap">
                           <button
                             type="button"
                             onClick={() => toggleServerStatus(server.id, 'ONLINE')}
-                            className={`px-2 py-1 rounded text-[11px] font-mono font-bold transition-colors ${
+                            className={`px-2.5 py-1 rounded text-[11px] font-mono font-bold transition-colors ${
                               server.status === 'ONLINE'
                                 ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
                                 : 'bg-slate-100 text-slate-500 hover:text-slate-800'
                             }`}
                           >
-                            ONLINE
+                            Online (Normal)
                           </button>
                           <button
                             type="button"
                             onClick={() => toggleServerStatus(server.id, 'DEGRADED')}
-                            className={`px-2 py-1 rounded text-[11px] font-mono font-bold transition-colors ${
+                            className={`px-2.5 py-1 rounded text-[11px] font-mono font-bold transition-colors ${
                               server.status === 'DEGRADED'
                                 ? 'bg-amber-100 text-amber-800 border border-amber-300'
                                 : 'bg-slate-100 text-slate-500 hover:text-slate-800'
                             }`}
                           >
-                            DEGRADED
+                            Degraded (Perhatian)
                           </button>
                           <button
                             type="button"
                             onClick={() => toggleServerStatus(server.id, 'OFFLINE')}
-                            className={`px-2 py-1 rounded text-[11px] font-mono font-bold transition-colors ${
+                            className={`px-2.5 py-1 rounded text-[11px] font-mono font-bold transition-colors ${
                               server.status === 'OFFLINE'
                                 ? 'bg-rose-100 text-rose-800 border border-rose-300'
                                 : 'bg-slate-100 text-slate-500 hover:text-slate-800'
                             }`}
                           >
-                            OFFLINE
+                            Offline (Gangguan)
                           </button>
                         </div>
                       </div>
 
-                      {/* Ping and Notes */}
-                      <div className="grid grid-cols-3 gap-2 text-xs">
-                        <div className="col-span-1">
-                          <label className="text-[10px] font-semibold text-slate-500 block mb-0.5">Latency (Ping)</label>
-                          <div className="flex items-center gap-1">
-                            <input
-                              type="number"
-                              min={0}
-                              value={server.latencyMs}
-                              onChange={e => updateServerLatency(server.id, Number(e.target.value))}
-                              className="w-full bg-slate-50 border border-slate-300 rounded px-2 py-1 text-xs font-mono text-slate-900 focus:bg-white focus:outline-none focus:border-blue-600"
-                            />
-                            <span className="text-[10px] text-slate-500 font-mono">ms</span>
-                          </div>
-                        </div>
-
-                        <div className="col-span-2">
-                          <label className="text-[10px] font-semibold text-slate-500 block mb-0.5">Catatan / Kondisi Node</label>
-                          <input
-                            type="text"
-                            placeholder="Status CPU, Memory, Disk..."
-                            value={server.notes || ''}
-                            onChange={e => updateServerNotes(server.id, e.target.value)}
-                            className="w-full bg-slate-50 border border-slate-300 rounded px-2 py-1 text-xs text-slate-900 focus:bg-white focus:outline-none focus:border-blue-600"
-                          />
-                        </div>
-                      </div>
-
-                      <div className="text-[10px] text-slate-400 font-mono flex items-center justify-between pt-1 border-t border-slate-100">
-                        <span>Pemeriksaan: {server.lastChecked || 'Shift awal'}</span>
-                        <span className="text-slate-500">Node ID: {server.id}</span>
+                      {/* Catatan */}
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-semibold text-slate-600 block">Catatan</label>
+                        <input
+                          type="text"
+                          placeholder="Catatan kondisi operasional server..."
+                          value={server.notes || ''}
+                          onChange={e => updateServerNotes(server.id, e.target.value)}
+                          className="w-full bg-slate-50 border border-slate-300 rounded px-2.5 py-1.5 text-xs text-slate-900 focus:bg-white focus:outline-none focus:border-blue-600"
+                        />
                       </div>
                     </div>
                   ))
@@ -1886,7 +1861,7 @@ export const ReportFormModal: React.FC<ReportFormModalProps> = ({ date }) => {
                 </div>
 
                 <div>
-                  <label className="text-slate-700 font-semibold block mb-1">Lokasi Server</label>
+                  <label className="text-slate-700 font-semibold block mb-1">Lokasi Penempatan *</label>
                   <select
                     value={newServerLocation}
                     onChange={e => setNewServerLocation(e.target.value)}
@@ -1901,12 +1876,12 @@ export const ReportFormModal: React.FC<ReportFormModalProps> = ({ date }) => {
                 </div>
 
                 <div>
-                  <label className="text-slate-700 font-semibold block mb-1">Role / Peran Server</label>
+                  <label className="text-slate-700 font-semibold block mb-1">Catatan</label>
                   <input
                     type="text"
-                    placeholder="Contoh: MES Realtime Ingestion & Historian"
-                    value={newServerRole}
-                    onChange={e => setNewServerRole(e.target.value)}
+                    placeholder="Catatan kondisi operasional server..."
+                    value={newServerNotes}
+                    onChange={e => setNewServerNotes(e.target.value)}
                     className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 text-slate-900 text-xs focus:outline-none focus:border-blue-600"
                   />
                 </div>

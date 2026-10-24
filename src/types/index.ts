@@ -92,11 +92,11 @@ export interface ServerCheck {
   id: string;
   name: string;
   location: string;
-  role: string;
   status: 'ONLINE' | 'DEGRADED' | 'OFFLINE';
-  latencyMs: number;
-  lastChecked: string;
   notes?: string;
+  role?: string;
+  latencyMs?: number;
+  lastChecked?: string;
 }
 
 export interface LicenseInventoryItem {

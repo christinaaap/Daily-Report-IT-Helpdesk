@@ -647,38 +647,47 @@ export const ReportDetailModal: React.FC<ReportDetailModalProps> = ({ reportId }
                   <table className="w-full text-left text-xs">
                     <thead className="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200">
                       <tr>
-                        <th className="py-2.5 px-3">Node Name</th>
-                        <th className="py-2.5 px-3">Location</th>
-                        <th className="py-2.5 px-3">Role</th>
-                        <th className="py-2.5 px-3">Status</th>
-                        <th className="py-2.5 px-3 text-right">Ping</th>
-                        <th className="py-2.5 px-3">Catatan Inspeksi</th>
+                        <th className="py-2.5 px-3">Nama Server</th>
+                        <th className="py-2.5 px-3">Lokasi Penempatan</th>
+                        <th className="py-2.5 px-3">Status Operasional</th>
+                        <th className="py-2.5 px-3">Catatan</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100 font-mono">
+                    <tbody className="divide-y divide-slate-100">
                       {report.servers.map(server => (
                         <tr key={server.id} className="hover:bg-slate-50/80">
                           <td className="py-3 px-3 text-slate-900 font-sans font-semibold">
                             {server.name}
                           </td>
                           <td className="py-3 px-3 text-slate-600 font-sans">{server.location}</td>
-                          <td className="py-3 px-3 text-slate-500 font-sans">{server.role}</td>
                           <td className="py-3 px-3">
                             <span
-                              className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                              className={`px-2.5 py-1 rounded text-[11px] font-mono font-bold border inline-flex items-center gap-1.5 ${
                                 server.status === 'ONLINE'
-                                  ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                                  ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
                                   : server.status === 'DEGRADED'
-                                  ? 'bg-amber-100 text-amber-800 border border-amber-200'
-                                  : 'bg-rose-100 text-rose-800 border border-rose-200'
+                                  ? 'bg-amber-50 text-amber-800 border-amber-200'
+                                  : 'bg-rose-50 text-rose-800 border-rose-200'
                               }`}
                             >
-                              {server.status}
+                              <span
+                                className={`w-1.5 h-1.5 rounded-full ${
+                                  server.status === 'ONLINE'
+                                    ? 'bg-emerald-600'
+                                    : server.status === 'DEGRADED'
+                                    ? 'bg-amber-600'
+                                    : 'bg-rose-600'
+                                }`}
+                              />
+                              {server.status === 'ONLINE'
+                                ? 'Online (Normal)'
+                                : server.status === 'DEGRADED'
+                                ? 'Degraded (Perhatian)'
+                                : 'Offline (Gangguan)'}
                             </span>
                           </td>
-                          <td className="py-3 px-3 text-right text-slate-600">{server.latencyMs}ms</td>
-                          <td className="py-3 px-3 font-sans text-slate-600 text-[11px]">
-                            {server.notes || 'Status nominal.'}
+                          <td className="py-3 px-3 font-sans text-slate-600 text-xs">
+                            {server.notes || '-'}
                           </td>
                         </tr>
                       ))}
