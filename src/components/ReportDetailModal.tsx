@@ -306,13 +306,11 @@ export const ReportDetailModal: React.FC<ReportDetailModalProps> = ({ reportId }
                 </div>
 
                 {/* Category breakdown table */}
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 pt-2 border-t border-slate-100 text-[11px] font-mono text-slate-600">
-                  <div>Network: <strong className="text-slate-900">{report.tickets.categoryBreakdown.network}</strong></div>
-                  <div>Hardware: <strong className="text-slate-900">{report.tickets.categoryBreakdown.hardware}</strong></div>
-                  <div>SAP/ERP: <strong className="text-slate-900">{report.tickets.categoryBreakdown.sapErp}</strong></div>
-                  <div>M365/Email: <strong className="text-slate-900">{report.tickets.categoryBreakdown.m365Email}</strong></div>
-                  <div>SCADA Link: <strong className="text-slate-900">{report.tickets.categoryBreakdown.scadaTerminal}</strong></div>
-                  <div>Radio/PAGA: <strong className="text-slate-900">{report.tickets.categoryBreakdown.telephonyRadio}</strong></div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 border-t border-slate-100 text-[11px] font-mono text-slate-600">
+                  <div>Helpdesk: <strong className="text-slate-900">{report.tickets.categoryBreakdown.helpdesk}</strong></div>
+                  <div>MES: <strong className="text-slate-900">{report.tickets.categoryBreakdown.mes}</strong></div>
+                  <div>ERP: <strong className="text-slate-900">{report.tickets.categoryBreakdown.erp}</strong></div>
+                  <div>Network/Telecom/Radio: <strong className="text-slate-900">{report.tickets.categoryBreakdown.networkTelecomRadio}</strong></div>
                 </div>
               </div>
 

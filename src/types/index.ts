@@ -56,12 +56,10 @@ export interface TicketMetrics {
   slaBreached: number;
   slaAtRisk: number;
   categoryBreakdown: {
-    network: number;
-    hardware: number;
-    sapErp: number;
-    m365Email: number;
-    scadaTerminal: number;
-    telephonyRadio: number;
+    helpdesk: number;
+    mes: number;
+    erp: number;
+    networkTelecomRadio: number;
   };
 }
 

@@ -57,12 +57,10 @@ export const ReportFormModal: React.FC<ReportFormModalProps> = ({ date }) => {
     slaBreached: 0,
     slaAtRisk: 1,
     categoryBreakdown: {
-      network: 6,
-      hardware: 5,
-      sapErp: 9,
-      m365Email: 14,
-      scadaTerminal: 2,
-      telephonyRadio: 4,
+      helpdesk: 14,
+      mes: 3,
+      erp: 9,
+      networkTelecomRadio: 6,
     },
   });
 
@@ -375,100 +373,68 @@ export const ReportFormModal: React.FC<ReportFormModalProps> = ({ date }) => {
                 <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700 mb-3">
                   Service Request Breakdown by Operational Category
                 </h3>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
                   <div>
-                    <label className="text-xs font-medium text-slate-600">Network &amp; Telecom</label>
+                    <label className="text-xs font-medium text-slate-600">Helpdesk</label>
                     <input
                       type="number"
                       min={0}
-                      value={tickets.categoryBreakdown.network}
+                      value={tickets.categoryBreakdown.helpdesk}
                       onChange={e =>
                         setTickets({
                           ...tickets,
-                          categoryBreakdown: { ...tickets.categoryBreakdown, network: Number(e.target.value) },
+                          categoryBreakdown: { ...tickets.categoryBreakdown, helpdesk: Number(e.target.value) },
                         })
                       }
-                      className="mt-1 w-full bg-slate-50 border border-slate-300 rounded px-3 py-1.5 text-xs font-mono text-slate-900"
+                      className="mt-1 w-full bg-slate-50 border border-slate-300 rounded px-3 py-1.5 text-xs font-mono text-slate-900 focus:outline-none focus:border-blue-600 focus:bg-white"
                     />
                   </div>
 
                   <div>
-                    <label className="text-xs font-medium text-slate-600">Hardware &amp; Workstations</label>
+                    <label className="text-xs font-medium text-slate-600">MES</label>
                     <input
                       type="number"
                       min={0}
-                      value={tickets.categoryBreakdown.hardware}
+                      value={tickets.categoryBreakdown.mes}
                       onChange={e =>
                         setTickets({
                           ...tickets,
-                          categoryBreakdown: { ...tickets.categoryBreakdown, hardware: Number(e.target.value) },
+                          categoryBreakdown: { ...tickets.categoryBreakdown, mes: Number(e.target.value) },
                         })
                       }
-                      className="mt-1 w-full bg-slate-50 border border-slate-300 rounded px-3 py-1.5 text-xs font-mono text-slate-900"
+                      className="mt-1 w-full bg-slate-50 border border-slate-300 rounded px-3 py-1.5 text-xs font-mono text-slate-900 focus:outline-none focus:border-blue-600 focus:bg-white"
                     />
                   </div>
 
                   <div>
-                    <label className="text-xs font-medium text-slate-600">SAP ERP &amp; Plant Apps</label>
+                    <label className="text-xs font-medium text-slate-600">ERP</label>
                     <input
                       type="number"
                       min={0}
-                      value={tickets.categoryBreakdown.sapErp}
+                      value={tickets.categoryBreakdown.erp}
                       onChange={e =>
                         setTickets({
                           ...tickets,
-                          categoryBreakdown: { ...tickets.categoryBreakdown, sapErp: Number(e.target.value) },
+                          categoryBreakdown: { ...tickets.categoryBreakdown, erp: Number(e.target.value) },
                         })
                       }
-                      className="mt-1 w-full bg-slate-50 border border-slate-300 rounded px-3 py-1.5 text-xs font-mono text-slate-900"
+                      className="mt-1 w-full bg-slate-50 border border-slate-300 rounded px-3 py-1.5 text-xs font-mono text-slate-900 focus:outline-none focus:border-blue-600 focus:bg-white"
                     />
                   </div>
 
                   <div>
-                    <label className="text-xs font-medium text-slate-600">M365 &amp; Email Flow</label>
+                    <label className="text-xs font-medium text-slate-600">Network/Telecom/Radio</label>
                     <input
                       type="number"
                       min={0}
-                      value={tickets.categoryBreakdown.m365Email}
+                      value={tickets.categoryBreakdown.networkTelecomRadio}
                       onChange={e =>
                         setTickets({
                           ...tickets,
-                          categoryBreakdown: { ...tickets.categoryBreakdown, m365Email: Number(e.target.value) },
+                          categoryBreakdown: { ...tickets.categoryBreakdown, networkTelecomRadio: Number(e.target.value) },
                         })
                       }
-                      className="mt-1 w-full bg-slate-50 border border-slate-300 rounded px-3 py-1.5 text-xs font-mono text-slate-900"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="text-xs font-medium text-slate-600">SCADA / DCS Terminal Access</label>
-                    <input
-                      type="number"
-                      min={0}
-                      value={tickets.categoryBreakdown.scadaTerminal}
-                      onChange={e =>
-                        setTickets({
-                          ...tickets,
-                          categoryBreakdown: { ...tickets.categoryBreakdown, scadaTerminal: Number(e.target.value) },
-                        })
-                      }
-                      className="mt-1 w-full bg-slate-50 border border-slate-300 rounded px-3 py-1.5 text-xs font-mono text-slate-900"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="text-xs font-medium text-slate-600">Radio VHF/UHF &amp; PAGA</label>
-                    <input
-                      type="number"
-                      min={0}
-                      value={tickets.categoryBreakdown.telephonyRadio}
-                      onChange={e =>
-                        setTickets({
-                          ...tickets,
-                          categoryBreakdown: { ...tickets.categoryBreakdown, telephonyRadio: Number(e.target.value) },
-                        })
-                      }
-                      className="mt-1 w-full bg-slate-50 border border-slate-300 rounded px-3 py-1.5 text-xs font-mono text-slate-900"
+                      className="mt-1 w-full bg-slate-50 border border-slate-300 rounded px-3 py-1.5 text-xs font-mono text-slate-900 focus:outline-none focus:border-blue-600 focus:bg-white"
                     />
                   </div>
                 </div>
