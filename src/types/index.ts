@@ -188,6 +188,30 @@ export interface AuditLogEntry {
   lockHash?: string;
 }
 
+export interface MailboxCrowdstrikeDetailItem {
+  id: string;
+  type: 'MAILBOX_ALMOST_FULL' | 'MAILBOX_FULL' | 'CROWDSTRIKE_MALICIOUS' | 'CROWDSTRIKE_INACTIVE_30D';
+  targetUserOrHost: string;
+  departmentOrLocation?: string;
+  notes?: string;
+}
+
+export interface MailboxCrowdstrikeMetrics {
+  mailboxAlmostFull: number;
+  mailboxFull: number;
+  crowdstrikeMaliciousActivity: number;
+  crowdstrikeInactive30Days: number;
+  notes?: string;
+  details?: MailboxCrowdstrikeDetailItem[];
+}
+
+export interface OperationalSummaryExceptions {
+  newUserRequests?: string;
+  poFollowUps?: string;
+  brokenAssets?: string;
+  generalNotes?: string;
+}
+
 export interface DailyReport {
   id: string;
   reportDate: string; // YYYY-MM-DD
@@ -209,6 +233,8 @@ export interface DailyReport {
   servers: ServerCheck[];
   licenses: LicenseStatus;
   physicalInspections: PhysicalInspectionItem[];
+  mailboxCrowdstrike?: MailboxCrowdstrikeMetrics;
+  operationalExceptions?: OperationalSummaryExceptions;
   
   // Executive notes
   executiveSummary: string;

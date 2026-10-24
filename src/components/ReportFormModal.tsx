@@ -3,6 +3,7 @@ import { useApp } from '../context/AppContext';
 import {
   X,
   ShieldAlert,
+  ShieldCheck,
   Server,
   FileKey,
   Video,
@@ -17,8 +18,13 @@ import {
   Plus,
   Trash2,
   UserCheck,
-  ShoppingCart,
   Clock,
+  Mail,
+  MapPin,
+  FileText,
+  Package,
+  Wrench,
+  UserPlus,
 } from 'lucide-react';
 import {
   TicketMetrics,
@@ -29,7 +35,9 @@ import {
   TicketCategory,
   LicenseInventoryItem,
   LicenseAssignment,
-  SoftwarePurchase,
+  MailboxCrowdstrikeMetrics,
+  MailboxCrowdstrikeDetailItem,
+  OperationalSummaryExceptions,
 } from '../types';
 import {
   INITIAL_SERVERS,
@@ -40,6 +48,8 @@ import { PhotoUploadField } from './PhotoUploadField';
 interface ReportFormModalProps {
   date: string;
 }
+
+export type FormSection = 'TICKETS' | 'SERVERS' | 'LICENSES' | 'MEETING_ROOMS' | 'MAILBOX_CROWDSTRIKE' | 'SUMMARY';
 
 export const ReportFormModal: React.FC<ReportFormModalProps> = ({ date }) => {
   const {
@@ -52,9 +62,9 @@ export const ReportFormModal: React.FC<ReportFormModalProps> = ({ date }) => {
     meetingRooms: contextMeetingRooms,
   } = useApp();
 
-  // Active form section tab:
-  // 1. Tickets & SLA | 2. Server Check | 3. MS365 dan Software Others | 4. VTC Physical Check | 5. Review & Lock
-  const [activeSection, setActiveSection] = useState<'TICKETS' | 'SERVERS' | 'LICENSES' | 'VTC' | 'SUMMARY'>('TICKETS');
+  // Active form section tab (6 sections as requested):
+  // 1. Tickets & SLA * | 2. Server Check * | 3. MS365 and Software Others | 4. Physical Check Meeting Room | 5. Mailbox and CrowdStrike | 6. Summary
+  const [activeSection, setActiveSection] = useState<FormSection>('TICKETS');
 
   // Form State - Section 1
   const [tickets, setTickets] = useState<TicketMetrics>({
@@ -150,24 +160,33 @@ export const ReportFormModal: React.FC<ReportFormModalProps> = ({ date }) => {
     notes: '',
   });
 
-  const [newPurchase, setNewPurchase] = useState<{
-    softwareName: string;
-    targetUser: string;
-    department: string;
-    quantity: number;
-    poNumber: string;
-    vendor: string;
-    status: 'ACTIVE' | 'DEPLOYED' | 'PENDING_INSTALL';
+  // Section 5: Mailbox and CrowdStrike state
+  const [mailboxMetrics, setMailboxMetrics] = useState<MailboxCrowdstrikeMetrics>({
+    mailboxAlmostFull: 0,
+    mailboxFull: 0,
+    crowdstrikeMaliciousActivity: 0,
+    crowdstrikeInactive30Days: 0,
+    notes: '',
+    details: [],
+  });
+  const [newMailboxDetail, setNewMailboxDetail] = useState<{
+    type: 'MAILBOX_ALMOST_FULL' | 'MAILBOX_FULL' | 'CROWDSTRIKE_MALICIOUS' | 'CROWDSTRIKE_INACTIVE_30D';
+    targetUserOrHost: string;
+    departmentOrLocation: string;
     notes: string;
   }>({
-    softwareName: '',
-    targetUser: '',
-    department: '',
-    quantity: 1,
-    poNumber: '',
-    vendor: '',
-    status: 'DEPLOYED',
+    type: 'MAILBOX_ALMOST_FULL',
+    targetUserOrHost: '',
+    departmentOrLocation: 'Site Uso Operations',
     notes: '',
+  });
+
+  // Section 6: Summary & Catatan Operasional
+  const [operationalExceptions, setOperationalExceptions] = useState<OperationalSummaryExceptions>({
+    newUserRequests: '',
+    poFollowUps: '',
+    brokenAssets: '',
+    generalNotes: '',
   });
 
   const [newInventorySoftware, setNewInventorySoftware] = useState<{
@@ -185,7 +204,7 @@ export const ReportFormModal: React.FC<ReportFormModalProps> = ({ date }) => {
   });
   const [showAddInventoryModal, setShowAddInventoryModal] = useState(false);
 
-  // Section 4: Physical inspections
+  // Section 4: Physical inspections (Meeting Rooms)
   const [physicalInspections, setPhysicalInspections] = useState<PhysicalInspectionItem[]>(() =>
     contextMeetingRooms.map(r => ({
       ...r,
@@ -197,12 +216,12 @@ export const ReportFormModal: React.FC<ReportFormModalProps> = ({ date }) => {
     }))
   );
 
-  // Section 5: Review & Handover
+  // Section 6: Handover Notes
   const [executiveSummary, setExecutiveSummary] = useState(
-    'Daily shift operations completed nominally. All VTC conference suites tested before 07:00 AM briefing. SCADA data diode firewall verified. Zero critical system downtime.'
+    'Daily shift operations completed nominally. All meeting rooms physically inspected and verified. Critical server nodes and services operating healthy.'
   );
   const [shiftHandoverNotes, setShiftHandoverNotes] = useState(
-    'Marine Jetty IP phone replacement confirmed resolved. AutoCAD license pool healthy. Handover to night on-call team completed.'
+    'Handover to incoming shift completed with zero blocking priority-1 issues.'
   );
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -249,6 +268,17 @@ export const ReportFormModal: React.FC<ReportFormModalProps> = ({ date }) => {
           : s
       )
     );
+  };
+
+  const handleSetAllServersOnline = () => {
+    setServers(prev =>
+      prev.map(s => ({
+        ...s,
+        status: 'ONLINE',
+        lastChecked: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      }))
+    );
+    showToast('Seluruh status server berhasil diset ke ONLINE (Normal).', 'success');
   };
 
   const updateServerNotes = (id: string, notes: string) => {
@@ -369,45 +399,37 @@ export const ReportFormModal: React.FC<ReportFormModalProps> = ({ date }) => {
     }));
   };
 
-  const handleAddPurchase = (e: React.FormEvent) => {
+  // --- Handlers: Mailbox and CrowdStrike ---
+  const handleAddMailboxDetail = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newPurchase.softwareName.trim()) {
-      showToast('Nama software yang dibeli wajib diisi.', 'error');
+    if (!newMailboxDetail.targetUserOrHost.trim()) {
+      showToast('User email atau Hostname wajib diisi.', 'error');
       return;
     }
-    const purchaseItem: SoftwarePurchase = {
-      id: `pur-${Date.now()}`,
-      softwareName: newPurchase.softwareName.trim(),
-      targetUser: newPurchase.targetUser.trim() || 'All Department Users',
-      department: newPurchase.department.trim() || 'ICT Operations',
-      quantity: Math.max(1, Number(newPurchase.quantity) || 1),
-      poNumber: newPurchase.poNumber.trim() || `PO-${date.replace(/-/g, '')}-ICT`,
-      vendor: newPurchase.vendor.trim() || 'Authorized Reseller',
-      purchaseDate: date,
-      status: newPurchase.status,
-      notes: newPurchase.notes.trim(),
+    const newDetail: MailboxCrowdstrikeDetailItem = {
+      id: `mb-cs-${Date.now()}`,
+      type: newMailboxDetail.type,
+      targetUserOrHost: newMailboxDetail.targetUserOrHost.trim(),
+      departmentOrLocation: newMailboxDetail.departmentOrLocation.trim() || 'Site Uso',
+      notes: newMailboxDetail.notes.trim() || 'Status dipantau helpdesk.',
     };
-    setLicenses(prev => ({
+    setMailboxMetrics(prev => ({
       ...prev,
-      purchases: [purchaseItem, ...(prev.purchases || [])],
+      details: [...(prev.details || []), newDetail],
     }));
-    setNewPurchase({
-      softwareName: '',
-      targetUser: '',
-      department: '',
-      quantity: 1,
-      poNumber: '',
-      vendor: '',
-      status: 'DEPLOYED',
+    setNewMailboxDetail({
+      type: 'MAILBOX_ALMOST_FULL',
+      targetUserOrHost: '',
+      departmentOrLocation: 'Site Uso Operations',
       notes: '',
     });
-    showToast(`Data pembelian ${purchaseItem.softwareName} berhasil ditambahkan.`, 'success');
+    showToast('Detail insiden/akun berhasil ditambahkan.', 'success');
   };
 
-  const handleDeletePurchase = (id: string) => {
-    setLicenses(prev => ({
+  const handleDeleteMailboxDetail = (id: string) => {
+    setMailboxMetrics(prev => ({
       ...prev,
-      purchases: (prev.purchases || []).filter(p => p.id !== id),
+      details: (prev.details || []).filter(d => d.id !== id),
     }));
   };
 
@@ -429,12 +451,36 @@ export const ReportFormModal: React.FC<ReportFormModalProps> = ({ date }) => {
   };
 
   const handleFinalSubmit = async () => {
+    // Section 1 Validation (Required *)
+    if (tickets.open < 0 || tickets.closedToday < 0) {
+      showToast('Section 1 (Tickets & SLA *) wajib diisi dengan benar.', 'error');
+      setActiveSection('TICKETS');
+      setShowConfirmModal(false);
+      return;
+    }
+    const uncompletedSlaTickets = slaTickets.filter(t => !t.ticketNumber.trim() || !t.technician.trim());
+    if (totalSlaItemsCount > 0 && uncompletedSlaTickets.length > 0) {
+      showToast('Section 1: Mohon lengkapi nomor tiket dan nama technician pada seluruh tiket over SLA.', 'error');
+      setActiveSection('TICKETS');
+      setShowConfirmModal(false);
+      return;
+    }
+
+    // Section 2 Validation (Required *)
+    if (servers.length === 0) {
+      showToast('Section 2 (Server Check *): Minimal harus terdapat 1 node server yang terverifikasi.', 'error');
+      setActiveSection('SERVERS');
+      setShowConfirmModal(false);
+      return;
+    }
+
+    // Section 4 Validation (Physical photos)
     if (!isVtcComplete) {
       showToast(
-        `Mandatory physical check requirement: Please attach photo proof for all ${physicalInspections.length} meeting rooms before submitting.`,
+        `Physical Check Meeting Room: Mohon lampirkan foto bukti fisik untuk seluruh ${physicalInspections.length} ruang meeting sebelum submit.`,
         'error'
       );
-      setActiveSection('VTC');
+      setActiveSection('MEETING_ROOMS');
       setShowConfirmModal(false);
       return;
     }
@@ -457,8 +503,18 @@ export const ReportFormModal: React.FC<ReportFormModalProps> = ({ date }) => {
         servers,
         licenses,
         physicalInspections,
-        executiveSummary,
-        shiftHandoverNotes,
+        mailboxCrowdstrike: mailboxMetrics,
+        operationalExceptions,
+        executiveSummary: [
+          executiveSummary,
+          operationalExceptions.newUserRequests ? `[Request Baru]: ${operationalExceptions.newUserRequests}` : '',
+          operationalExceptions.poFollowUps ? `[Follow-up PO]: ${operationalExceptions.poFollowUps}` : '',
+          operationalExceptions.brokenAssets ? `[Broken Asset]: ${operationalExceptions.brokenAssets}` : '',
+        ].filter(Boolean).join('\n\n'),
+        shiftHandoverNotes: [
+          shiftHandoverNotes,
+          operationalExceptions.generalNotes ? `[Catatan Operasional]: ${operationalExceptions.generalNotes}` : '',
+        ].filter(Boolean).join('\n\n'),
       });
       setShowConfirmModal(false);
     } catch (e) {
@@ -515,7 +571,7 @@ export const ReportFormModal: React.FC<ReportFormModalProps> = ({ date }) => {
           </button>
         </div>
 
-        {/* Section Navigation Tabs: 5 Sections */}
+        {/* Section Navigation Tabs: 6 Sections */}
         <div className="px-6 pt-3 border-b border-slate-200 bg-white flex items-center gap-2 overflow-x-auto shrink-0">
           <button
             type="button"
@@ -527,7 +583,8 @@ export const ReportFormModal: React.FC<ReportFormModalProps> = ({ date }) => {
             }`}
           >
             <Ticket className="w-3.5 h-3.5" />
-            1. Tickets &amp; SLA
+            <span>1. Tickets &amp; SLA</span>
+            <span className="text-rose-600 font-extrabold text-sm leading-none" title="Wajib Diisi">*</span>
             {(tickets.slaBreached > 0 || tickets.slaAtRisk > 0) && (
               <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-rose-100 text-rose-800 font-bold border border-rose-200">
                 {tickets.slaBreached + tickets.slaAtRisk}
@@ -545,7 +602,11 @@ export const ReportFormModal: React.FC<ReportFormModalProps> = ({ date }) => {
             }`}
           >
             <Server className="w-3.5 h-3.5" />
-            2. Server Check ({servers.filter(s => s.status === 'ONLINE').length}/{servers.length})
+            <span>2. Server Check</span>
+            <span className="text-rose-600 font-extrabold text-sm leading-none" title="Wajib Diisi">*</span>
+            <span className="text-[10px] font-mono text-slate-500 font-normal">
+              ({servers.filter(s => s.status === 'ONLINE').length}/{servers.length})
+            </span>
           </button>
 
           <button
@@ -558,26 +619,50 @@ export const ReportFormModal: React.FC<ReportFormModalProps> = ({ date }) => {
             }`}
           >
             <FileKey className="w-3.5 h-3.5" />
-            3. MS365 dan Software Others
+            <span>3. MS365 and Software Others</span>
           </button>
 
           <button
             type="button"
-            onClick={() => setActiveSection('VTC')}
+            onClick={() => setActiveSection('MEETING_ROOMS')}
             className={`pb-2.5 px-3 text-xs font-semibold border-b-2 flex items-center gap-1.5 transition-colors whitespace-nowrap ${
-              activeSection === 'VTC'
+              activeSection === 'MEETING_ROOMS'
                 ? 'border-blue-700 text-blue-700'
                 : 'border-transparent text-slate-500 hover:text-slate-800'
             }`}
           >
             <Video className="w-3.5 h-3.5" />
-            4. VTC Physical Check
+            <span>4. Physical Check Meeting Room</span>
             {!isVtcComplete ? (
               <span className="text-[10px] bg-amber-100 text-amber-800 px-1.5 rounded font-mono font-medium">
-                Photo Required
+                Photo
               </span>
             ) : (
               <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+            )}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveSection('MAILBOX_CROWDSTRIKE')}
+            className={`pb-2.5 px-3 text-xs font-semibold border-b-2 flex items-center gap-1.5 transition-colors whitespace-nowrap ${
+              activeSection === 'MAILBOX_CROWDSTRIKE'
+                ? 'border-blue-700 text-blue-700'
+                : 'border-transparent text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            <Mail className="w-3.5 h-3.5" />
+            <span>5. Mailbox and CrowdStrike</span>
+            {(mailboxMetrics.mailboxAlmostFull > 0 ||
+              mailboxMetrics.mailboxFull > 0 ||
+              mailboxMetrics.crowdstrikeMaliciousActivity > 0 ||
+              mailboxMetrics.crowdstrikeInactive30Days > 0) && (
+              <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-amber-100 text-amber-800 font-bold border border-amber-200">
+                {mailboxMetrics.mailboxAlmostFull +
+                  mailboxMetrics.mailboxFull +
+                  mailboxMetrics.crowdstrikeMaliciousActivity +
+                  mailboxMetrics.crowdstrikeInactive30Days}
+              </span>
             )}
           </button>
 
@@ -590,8 +675,8 @@ export const ReportFormModal: React.FC<ReportFormModalProps> = ({ date }) => {
                 : 'border-transparent text-slate-500 hover:text-slate-800'
             }`}
           >
-            <Layers className="w-3.5 h-3.5" />
-            5. Review &amp; Lock
+            <FileText className="w-3.5 h-3.5" />
+            <span>6. Summary</span>
           </button>
         </div>
 
@@ -602,9 +687,15 @@ export const ReportFormModal: React.FC<ReportFormModalProps> = ({ date }) => {
             <div className="space-y-6">
               {/* Status summary */}
               <div className="rounded-xl bg-white p-5 border border-slate-200 shadow-2xs">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700 mb-3">
-                  Ticket Status Summary (Remedy / Jira Service Management)
-                </h3>
+                <div className="flex items-center justify-between mb-3 pb-2 border-b border-slate-100">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-800 flex items-center gap-1.5">
+                    <span>Ticket Status Summary (Remedy / Jira Service Management)</span>
+                    <span className="text-rose-600 font-extrabold text-sm" title="Wajib Diisi">*</span>
+                  </h3>
+                  <span className="text-[10px] font-semibold text-rose-700 bg-rose-50 border border-rose-200 px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                    <span className="text-rose-600 font-bold">*</span> Wajib Diisi
+                  </span>
+                </div>
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
                   <div className="p-3.5 rounded-lg bg-slate-50 border border-slate-200">
                     <label className="text-[11px] font-semibold text-slate-600 block">Open Tickets</label>
@@ -1010,125 +1101,228 @@ export const ReportFormModal: React.FC<ReportFormModalProps> = ({ date }) => {
             </div>
           )}
 
-          {/* TAB 2: SERVER CHECK */}
+          {/* TAB 2: SERVER CHECK (WAJIB DIISI *) */}
           {activeSection === 'SERVERS' && (
-            <div className="space-y-4">
-              <div className="p-4 rounded-xl bg-blue-50 border border-blue-200 flex items-start justify-between gap-4">
-                <div className="flex items-start gap-3">
-                  <div className="p-2 rounded-lg bg-blue-100 text-blue-800 shrink-0">
-                    <Server className="w-5 h-5" />
+            <div className="space-y-5">
+              {/* Header Banner & Stats */}
+              <div className="p-4 rounded-xl bg-slate-900 text-white shadow-xs space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-800">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2.5 rounded-lg bg-blue-600/30 border border-blue-400/40 text-blue-400 shrink-0">
+                      <Server className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-sm font-bold text-white tracking-wide">
+                          Section 2: Server Check
+                        </h3>
+                        <span className="text-rose-400 font-extrabold text-sm">*</span>
+                        <span className="text-[10px] font-semibold text-rose-300 bg-rose-950/80 border border-rose-800 px-2 py-0.5 rounded-full">
+                          Wajib Diisi (*)
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-400 mt-0.5">
+                        Verifikasi status ketersediaan node server produksi PT Donggi-Senoro LNG pada shift ini.
+                      </p>
+                    </div>
                   </div>
-                  <div className="text-xs text-slate-700">
-                    <strong className="text-blue-900 block font-bold text-sm mb-0.5">
-                      Section 2: Server Check
-                    </strong>
-                    Daftar server master terdata oleh Administrator melalui tab "Infrastructure Fleet" (Server Check Management). Petugas Helpdesk yang bertugas melakukan verifikasi status operasional (Online, Degraded, Offline) serta mencatat keterangan kondisi server.
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      type="button"
+                      onClick={handleSetAllServersOnline}
+                      className="px-3 py-1.5 text-xs font-semibold text-emerald-300 bg-emerald-950/70 hover:bg-emerald-900 border border-emerald-700/60 rounded-lg shadow-xs transition-colors flex items-center gap-1.5"
+                      title="Set semua server berstatus ONLINE (Normal) dengan 1 klik"
+                    >
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                      Tandai Semua Online
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setIsAddServerOpen(true)}
+                      className="px-3 py-1.5 text-xs font-semibold text-blue-200 bg-blue-900/60 hover:bg-blue-800 border border-blue-700/60 rounded-lg shadow-xs transition-colors flex items-center gap-1.5"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      + Tambah Server
+                    </button>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => setIsAddServerOpen(true)}
-                    className="px-3 py-1.5 text-xs font-semibold text-blue-700 bg-white hover:bg-blue-50 border border-blue-300 rounded-lg shadow-2xs transition-colors flex items-center gap-1.5"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    + Tambah Server Node
-                  </button>
+                {/* KPI Status Badges */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs font-mono">
+                  <div className="p-2.5 rounded-lg bg-slate-800/80 border border-slate-700/60 flex items-center justify-between">
+                    <span className="text-slate-400">Total Nodes:</span>
+                    <strong className="text-white text-sm">{servers.length}</strong>
+                  </div>
+                  <div className="p-2.5 rounded-lg bg-emerald-950/40 border border-emerald-800/50 flex items-center justify-between">
+                    <span className="text-emerald-400 flex items-center gap-1">
+                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                      Online:
+                    </span>
+                    <strong className="text-emerald-300 text-sm">{servers.filter(s => s.status === 'ONLINE').length}</strong>
+                  </div>
+                  <div className="p-2.5 rounded-lg bg-amber-950/40 border border-amber-800/50 flex items-center justify-between">
+                    <span className="text-amber-400 flex items-center gap-1">
+                      <span className="w-2 h-2 rounded-full bg-amber-400" />
+                      Degraded:
+                    </span>
+                    <strong className="text-amber-300 text-sm">{servers.filter(s => s.status === 'DEGRADED').length}</strong>
+                  </div>
+                  <div className="p-2.5 rounded-lg bg-rose-950/40 border border-rose-800/50 flex items-center justify-between">
+                    <span className="text-rose-400 flex items-center gap-1">
+                      <span className="w-2 h-2 rounded-full bg-rose-400" />
+                      Offline:
+                    </span>
+                    <strong className="text-rose-300 text-sm">{servers.filter(s => s.status === 'OFFLINE').length}</strong>
+                  </div>
                 </div>
               </div>
 
-              {/* Server Count Indicator */}
-              <div className="flex items-center justify-between text-xs text-slate-600 px-1 font-mono">
-                <span>
-                  Total Server Terdaftar: <strong className="text-slate-900">{servers.length} Nodes</strong>
-                </span>
-                <span className="text-emerald-700 font-bold">
-                  {servers.filter(s => s.status === 'ONLINE').length} Online · {servers.filter(s => s.status === 'DEGRADED').length} Degraded · {servers.filter(s => s.status === 'OFFLINE').length} Offline
-                </span>
-              </div>
-
-              {/* Grid of Server Check items */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+              {/* Grid of Server Check Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {servers.length === 0 ? (
-                  <div className="p-8 rounded-xl border border-dashed border-slate-300 bg-white text-center space-y-2 col-span-2">
-                    <Server className="w-8 h-8 text-slate-300 mx-auto" />
-                    <p className="text-xs font-semibold text-slate-700">
+                  <div className="p-10 rounded-xl border border-dashed border-slate-300 bg-white text-center space-y-2 col-span-2">
+                    <Server className="w-10 h-10 text-slate-300 mx-auto" />
+                    <p className="text-xs font-bold text-slate-700">
                       Belum ada node server yang terdaftar di sistem
                     </p>
                     <p className="text-[11px] text-slate-400 font-mono">
-                      Admin dapat memasukkan list server secara manual melalui tab "Infrastructure Fleet", atau klik tombol di atas.
+                      Admin dapat memasukkan list server secara manual melalui tab "Infrastructure Fleet", atau klik tombol Tambah Server di atas.
                     </p>
                   </div>
                 ) : (
-                  servers.map(server => (
-                    <div
-                      key={server.id}
-                      className="p-4 rounded-xl border border-slate-200 bg-white shadow-2xs space-y-3"
-                    >
-                      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
-                        <div>
-                          <div className="text-xs font-bold text-slate-900">{server.name}</div>
-                          <div className="text-[11px] text-slate-500 font-medium">{server.location}</div>
+                  servers.map(server => {
+                    const isOnline = server.status === 'ONLINE';
+                    const isDegraded = server.status === 'DEGRADED';
+                    const isOffline = server.status === 'OFFLINE';
+
+                    return (
+                      <div
+                        key={server.id}
+                        className={`p-4 rounded-xl border bg-white shadow-xs hover:shadow-md transition-all space-y-3.5 border-l-4 ${
+                          isOnline
+                            ? 'border-slate-200 border-l-emerald-500'
+                            : isDegraded
+                            ? 'border-amber-200 border-l-amber-500 bg-amber-50/15'
+                            : 'border-rose-200 border-l-rose-500 bg-rose-50/15'
+                        }`}
+                      >
+                        {/* Top: Identity & Current Status Badge */}
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2">
+                              <span
+                                className={`w-2 h-2 rounded-full shrink-0 ${
+                                  isOnline ? 'bg-emerald-500 animate-pulse' : isDegraded ? 'bg-amber-500' : 'bg-rose-500'
+                                }`}
+                              />
+                              <h4 className="text-xs sm:text-sm font-bold text-slate-900 tracking-tight font-sans truncate">
+                                {server.name}
+                              </h4>
+                            </div>
+                            <div className="flex items-center gap-1.5 text-xs text-slate-500 mt-1 font-medium">
+                              <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                              <span className="truncate">{server.location}</span>
+                            </div>
+                          </div>
+
+                          <span
+                            className={`px-2.5 py-1 rounded-full text-[11px] font-mono font-bold shrink-0 border flex items-center gap-1.5 ${
+                              isOnline
+                                ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                                : isDegraded
+                                ? 'bg-amber-50 text-amber-800 border-amber-200'
+                                : 'bg-rose-50 text-rose-800 border-rose-200'
+                            }`}
+                          >
+                            <span
+                              className={`w-1.5 h-1.5 rounded-full ${
+                                isOnline ? 'bg-emerald-600' : isDegraded ? 'bg-amber-600' : 'bg-rose-600'
+                              }`}
+                            />
+                            {isOnline
+                              ? 'Online (Normal)'
+                              : isDegraded
+                              ? 'Degraded (Perhatian)'
+                              : 'Offline (Gangguan)'}
+                          </span>
                         </div>
 
-                        {/* Status Toggle Buttons: 3 Pilihan Sesuai Permintaan */}
-                        <div className="flex items-center gap-1 shrink-0 flex-wrap">
+                        {/* Interactive Full-Width 3-Segment Selector */}
+                        <div className="grid grid-cols-3 gap-1.5 p-1 bg-slate-100 rounded-lg border border-slate-200/80">
                           <button
                             type="button"
                             onClick={() => toggleServerStatus(server.id, 'ONLINE')}
-                            className={`px-2.5 py-1 rounded text-[11px] font-mono font-bold transition-colors ${
-                              server.status === 'ONLINE'
-                                ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
-                                : 'bg-slate-100 text-slate-500 hover:text-slate-800'
+                            className={`py-1.5 px-2 rounded-md text-xs font-semibold transition-all flex items-center justify-center gap-1.5 ${
+                              isOnline
+                                ? 'bg-emerald-600 text-white shadow-xs font-bold ring-1 ring-emerald-700/30'
+                                : 'text-slate-600 hover:text-slate-900 hover:bg-white/70'
                             }`}
                           >
-                            Online (Normal)
+                            <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                            <span className="truncate">Online (Normal)</span>
                           </button>
                           <button
                             type="button"
                             onClick={() => toggleServerStatus(server.id, 'DEGRADED')}
-                            className={`px-2.5 py-1 rounded text-[11px] font-mono font-bold transition-colors ${
-                              server.status === 'DEGRADED'
-                                ? 'bg-amber-100 text-amber-800 border border-amber-300'
-                                : 'bg-slate-100 text-slate-500 hover:text-slate-800'
+                            className={`py-1.5 px-2 rounded-md text-xs font-semibold transition-all flex items-center justify-center gap-1.5 ${
+                              isDegraded
+                                ? 'bg-amber-500 text-white shadow-xs font-bold ring-1 ring-amber-600/30'
+                                : 'text-slate-600 hover:text-slate-900 hover:bg-white/70'
                             }`}
                           >
-                            Degraded (Perhatian)
+                            <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                            <span className="truncate">Degraded (Perhatian)</span>
                           </button>
                           <button
                             type="button"
                             onClick={() => toggleServerStatus(server.id, 'OFFLINE')}
-                            className={`px-2.5 py-1 rounded text-[11px] font-mono font-bold transition-colors ${
-                              server.status === 'OFFLINE'
-                                ? 'bg-rose-100 text-rose-800 border border-rose-300'
-                                : 'bg-slate-100 text-slate-500 hover:text-slate-800'
+                            className={`py-1.5 px-2 rounded-md text-xs font-semibold transition-all flex items-center justify-center gap-1.5 ${
+                              isOffline
+                                ? 'bg-rose-600 text-white shadow-xs font-bold ring-1 ring-rose-700/30'
+                                : 'text-slate-600 hover:text-slate-900 hover:bg-white/70'
                             }`}
                           >
-                            Offline (Gangguan)
+                            <ShieldAlert className="w-3.5 h-3.5 shrink-0" />
+                            <span className="truncate">Offline (Gangguan)</span>
                           </button>
                         </div>
-                      </div>
 
-                      {/* Catatan */}
-                      <div className="space-y-1">
-                        <label className="text-[10px] font-semibold text-slate-600 block">Catatan</label>
-                        <input
-                          type="text"
-                          placeholder="Catatan kondisi operasional server..."
-                          value={server.notes || ''}
-                          onChange={e => updateServerNotes(server.id, e.target.value)}
-                          className="w-full bg-slate-50 border border-slate-300 rounded px-2.5 py-1.5 text-xs text-slate-900 focus:bg-white focus:outline-none focus:border-blue-600"
-                        />
+                        {/* Catatan Field */}
+                        <div className="space-y-1">
+                          <div className="flex items-center justify-between text-[11px]">
+                            <label className="font-semibold text-slate-700 flex items-center gap-1">
+                              <FileText className="w-3 h-3 text-slate-400" />
+                              Catatan Kondisi Server
+                            </label>
+                            {!isOnline && (
+                              <span className="text-[10px] text-amber-700 font-semibold flex items-center gap-0.5">
+                                <AlertTriangle className="w-3 h-3" />
+                                Wajib berikan keterangan kendala
+                              </span>
+                            )}
+                          </div>
+                          <input
+                            type="text"
+                            placeholder="Ketik catatan kondisi operasional server..."
+                            value={server.notes || ''}
+                            onChange={e => updateServerNotes(server.id, e.target.value)}
+                            className={`w-full border rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-blue-600 transition-colors ${
+                              !isOnline
+                                ? 'bg-white border-amber-300 focus:ring-1 focus:ring-amber-400'
+                                : 'bg-slate-50 focus:bg-white border-slate-300'
+                            }`}
+                          />
+                        </div>
                       </div>
-                    </div>
-                  ))
+                    );
+                  })
                 )}
               </div>
             </div>
           )}
 
-          {/* TAB 3: MS365 DAN SOFTWARE OTHERS */}
+          {/* TAB 3: MS365 AND SOFTWARE OTHERS (OPSIONAL) */}
           {activeSection === 'LICENSES' && (
             <div className="space-y-6">
               {/* Header Banner */}
@@ -1138,10 +1332,15 @@ export const ReportFormModal: React.FC<ReportFormModalProps> = ({ date }) => {
                     <FileKey className="w-5 h-5" />
                   </div>
                   <div className="text-xs text-slate-700">
-                    <strong className="text-purple-900 block font-bold text-sm mb-0.5">
-                      Section 3: MS365 dan Software Others
-                    </strong>
-                    Manajemen ketersediaan lisensi cloud &amp; on-premise (Microsoft 365, AutoCAD, SAP, Adobe, dll). Update ketersediaan (available), penugasan lisensi ke pengguna baru (new user assignment), serta pencatatan pembelian lisensi baru.
+                    <div className="flex items-center gap-2">
+                      <strong className="text-purple-900 block font-bold text-sm mb-0.5">
+                        Section 3: MS365 and Software Others
+                      </strong>
+                      <span className="text-[10px] font-semibold text-purple-700 bg-purple-100/80 border border-purple-300 px-2 py-0.5 rounded-full">
+                        Opsional / Tidak Wajib
+                      </span>
+                    </div>
+                    Manajemen ketersediaan lisensi cloud &amp; on-premise (Microsoft 365, AutoCAD, SAP, Adobe, dll). Pemantauan ketersediaan (available pool) dan pencatatan penugasan lisensi ke pengguna baru (new user assignment).
                   </div>
                 </div>
 
@@ -1404,160 +1603,21 @@ export const ReportFormModal: React.FC<ReportFormModalProps> = ({ date }) => {
                   </table>
                 </div>
               </div>
-
-              {/* SUBSECTION 3: NEW SOFTWARE PURCHASES */}
-              <div className="rounded-xl bg-white p-5 border border-slate-200 shadow-2xs space-y-4">
-                <div className="flex items-center justify-between pb-2 border-b border-slate-200">
-                  <div className="flex items-center gap-2">
-                    <ShoppingCart className="w-4 h-4 text-blue-700" />
-                    <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900">
-                      3. Pembelian Software Baru kepada User (Software Procurement &amp; Purchases)
-                    </h3>
-                  </div>
-                  <span className="text-[11px] text-slate-500 font-mono">
-                    {(licenses.purchases || []).length} Pembelian Tercatat
-                  </span>
-                </div>
-
-                {/* Form to add purchase */}
-                <form onSubmit={handleAddPurchase} className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-3">
-                  <div className="text-xs font-bold text-slate-800">
-                    Form Pencatatan Pembelian Software Baru
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 text-xs">
-                    <div>
-                      <label className="text-[11px] font-semibold text-slate-600 block mb-1">Nama Software *</label>
-                      <input
-                        type="text"
-                        placeholder="Contoh: PowerBI Pro"
-                        value={newPurchase.softwareName}
-                        onChange={e => setNewPurchase({ ...newPurchase, softwareName: e.target.value })}
-                        className="w-full bg-white border border-slate-300 rounded px-2.5 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-blue-600"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="text-[11px] font-semibold text-slate-600 block mb-1">User / Pemohon *</label>
-                      <input
-                        type="text"
-                        placeholder="Contoh: Tim Akuntansi"
-                        value={newPurchase.targetUser}
-                        onChange={e => setNewPurchase({ ...newPurchase, targetUser: e.target.value })}
-                        className="w-full bg-white border border-slate-300 rounded px-2.5 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-blue-600"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="text-[11px] font-semibold text-slate-600 block mb-1">Jumlah Seats</label>
-                      <input
-                        type="number"
-                        min={1}
-                        value={newPurchase.quantity}
-                        onChange={e => setNewPurchase({ ...newPurchase, quantity: Number(e.target.value) })}
-                        className="w-full bg-white border border-slate-300 rounded px-2.5 py-1.5 text-xs font-mono text-slate-900 focus:outline-none focus:border-blue-600"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="text-[11px] font-semibold text-slate-600 block mb-1">No. PO / Ref Dokumen</label>
-                      <input
-                        type="text"
-                        placeholder="PO-2026-ICT-105"
-                        value={newPurchase.poNumber}
-                        onChange={e => setNewPurchase({ ...newPurchase, poNumber: e.target.value })}
-                        className="w-full bg-white border border-slate-300 rounded px-2.5 py-1.5 text-xs font-mono text-slate-900 focus:outline-none focus:border-blue-600"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="text-[11px] font-semibold text-slate-600 block mb-1">Vendor / Partner</label>
-                      <input
-                        type="text"
-                        placeholder="PT Astragraphia"
-                        value={newPurchase.vendor}
-                        onChange={e => setNewPurchase({ ...newPurchase, vendor: e.target.value })}
-                        className="w-full bg-white border border-slate-300 rounded px-2.5 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-blue-600"
-                      />
-                    </div>
-
-                    <div className="flex items-end">
-                      <button
-                        type="submit"
-                        className="w-full px-3 py-1.5 text-xs font-semibold text-white bg-blue-700 hover:bg-blue-800 rounded-lg shadow-xs transition-colors flex items-center justify-center gap-1.5"
-                      >
-                        <Plus className="w-3.5 h-3.5" />
-                        Simpan Pembelian
-                      </button>
-                    </div>
-                  </div>
-                </form>
-
-                {/* Table of purchases */}
-                <div className="border border-slate-200 rounded-xl overflow-hidden">
-                  <table className="w-full text-left text-xs">
-                    <thead className="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200">
-                      <tr>
-                        <th className="py-2.5 px-3">Software</th>
-                        <th className="py-2.5 px-3">Pemohon / Departemen</th>
-                        <th className="py-2.5 px-3">Jumlah Seats</th>
-                        <th className="py-2.5 px-3">No. PO</th>
-                        <th className="py-2.5 px-3">Vendor</th>
-                        <th className="py-2.5 px-3">Status</th>
-                        <th className="py-2.5 px-3 text-right">Aksi</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100 font-mono">
-                      {(licenses.purchases || []).length === 0 ? (
-                        <tr>
-                          <td colSpan={7} className="py-4 text-center text-slate-400 font-mono text-xs">
-                            Belum ada transaksi pembelian software baru pada shift ini.
-                          </td>
-                        </tr>
-                      ) : (
-                        (licenses.purchases || []).map(pur => (
-                          <tr key={pur.id} className="hover:bg-slate-50 font-sans">
-                            <td className="py-2.5 px-3 font-semibold text-slate-900">{pur.softwareName}</td>
-                            <td className="py-2.5 px-3 text-slate-600">{pur.targetUser} ({pur.department})</td>
-                            <td className="py-2.5 px-3 font-mono font-bold text-slate-800">{pur.quantity} Seats</td>
-                            <td className="py-2.5 px-3 font-mono text-slate-600">{pur.poNumber}</td>
-                            <td className="py-2.5 px-3 text-slate-600">{pur.vendor}</td>
-                            <td className="py-2.5 px-3">
-                              <span className="font-mono text-[10px] px-2 py-0.5 rounded-full font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
-                                {pur.status}
-                              </span>
-                            </td>
-                            <td className="py-2.5 px-3 text-right font-sans">
-                              <button
-                                type="button"
-                                onClick={() => handleDeletePurchase(pur.id)}
-                                className="text-slate-400 hover:text-rose-600 p-1 rounded"
-                                title="Hapus catatan"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-                            </td>
-                          </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
             </div>
           )}
 
-          {/* TAB 4: VTC PHYSICAL INSPECTIONS (MANDATORY EVIDENCE REQUIREMENT) */}
-          {activeSection === 'VTC' && (
+          {/* TAB 4: PHYSICAL CHECK MEETING ROOM */}
+          {activeSection === 'MEETING_ROOMS' && (
             <div className="space-y-5">
               <div className="p-4 rounded-xl bg-blue-50 border border-blue-200 flex items-start gap-3">
-                <div className="p-2 rounded-lg bg-blue-100 text-blue-800">
+                <div className="p-2 rounded-lg bg-blue-100 text-blue-800 shrink-0">
                   <Video className="w-5 h-5" />
                 </div>
                 <div className="text-xs text-slate-700">
                   <strong className="text-blue-900 block text-sm font-bold">
-                    Mandatory Physical Inspection Policy
+                    Section 4: Physical Check Meeting Room (Inspeksi Fisik Ruang Rapat &amp; VTC)
                   </strong>
-                  Untuk inspeksi VTC / Ruang Meeting, Duty Engineer wajib berjalan langsung ke fasilitas pada awal shift (06:00 WITA), menguji audio, video, dan kabel display, serta <strong>wajib melampirkan foto bukti</strong> sebelum laporan dapat disubmit.
+                  Untuk inspeksi fasilitas ruang meeting dan VTC, Duty Engineer / Helpdesk wajib memeriksa audio pod, display video, kabel sharing, serta <strong>wajib melampirkan foto bukti fisik</strong> setiap ruangan sebelum laporan dapat disubmit.
                 </div>
               </div>
 
@@ -1686,71 +1746,427 @@ export const ReportFormModal: React.FC<ReportFormModalProps> = ({ date }) => {
             </div>
           )}
 
-          {/* TAB 5: EXECUTIVE SUMMARY & IMMUTABLE SUBMISSION */}
-          {activeSection === 'SUMMARY' && (
-            <div className="space-y-5">
+          {/* TAB 5: MAILBOX AND CROWDSTRIKE */}
+          {activeSection === 'MAILBOX_CROWDSTRIKE' && (
+            <div className="space-y-6">
+              {/* Header Banner */}
+              <div className="p-4 rounded-xl bg-slate-900 text-white shadow-xs flex items-start justify-between gap-4">
+                <div className="flex items-start gap-3">
+                  <div className="p-2.5 rounded-lg bg-indigo-600/30 border border-indigo-400/40 text-indigo-400 shrink-0">
+                    <ShieldCheck className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <strong className="text-white block font-bold text-sm mb-0.5">
+                      Section 5: Mailbox and CrowdStrike
+                    </strong>
+                    <p className="text-xs text-slate-400">
+                      Pemantauan kesehatan kapasitas mailbox pengguna Microsoft 365 dan status proteksi endpoint EDR CrowdStrike Falcon.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* 4 KPI Metric Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+                {/* 1. Mailbox Almost Full */}
+                <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-xs space-y-2">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-semibold text-slate-700 flex items-center gap-1.5">
+                      <Mail className="w-4 h-4 text-amber-600" />
+                      Mailbox Almost Full
+                    </span>
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200 font-bold">
+                      &gt;= 90% Quota
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-3 pt-1">
+                    <input
+                      type="number"
+                      min={0}
+                      value={mailboxMetrics.mailboxAlmostFull}
+                      onChange={e =>
+                        setMailboxMetrics({ ...mailboxMetrics, mailboxAlmostFull: Math.max(0, Number(e.target.value)) })
+                      }
+                      className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-lg font-bold font-mono text-slate-900 focus:bg-white focus:outline-none focus:border-amber-500"
+                    />
+                    <span className="text-xs text-slate-500 font-mono">Akun</span>
+                  </div>
+                  <p className="text-[11px] text-slate-400">
+                    Jumlah akun user yang kuota penyimpanannya mendekati batas penuh.
+                  </p>
+                </div>
+
+                {/* 2. Mailbox Full */}
+                <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-xs space-y-2">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-semibold text-slate-700 flex items-center gap-1.5">
+                      <Mail className="w-4 h-4 text-rose-600" />
+                      Mailbox Full
+                    </span>
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-rose-50 text-rose-800 border border-rose-200 font-bold">
+                      100% Locked
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-3 pt-1">
+                    <input
+                      type="number"
+                      min={0}
+                      value={mailboxMetrics.mailboxFull}
+                      onChange={e =>
+                        setMailboxMetrics({ ...mailboxMetrics, mailboxFull: Math.max(0, Number(e.target.value)) })
+                      }
+                      className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-lg font-bold font-mono text-slate-900 focus:bg-white focus:outline-none focus:border-rose-500"
+                    />
+                    <span className="text-xs text-slate-500 font-mono">Akun</span>
+                  </div>
+                  <p className="text-[11px] text-slate-400">
+                    Jumlah akun user yang telah mencapai kuota 100% (tidak dapat terima email).
+                  </p>
+                </div>
+
+                {/* 3. Crowdstrike Detection Malicious activity */}
+                <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-xs space-y-2">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-semibold text-slate-700 flex items-center gap-1.5">
+                      <ShieldAlert className="w-4 h-4 text-rose-600" />
+                      Crowdstrike Detection
+                    </span>
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-rose-50 text-rose-800 border border-rose-200 font-bold">
+                      Malicious
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-3 pt-1">
+                    <input
+                      type="number"
+                      min={0}
+                      value={mailboxMetrics.crowdstrikeMaliciousActivity}
+                      onChange={e =>
+                        setMailboxMetrics({
+                          ...mailboxMetrics,
+                          crowdstrikeMaliciousActivity: Math.max(0, Number(e.target.value)),
+                        })
+                      }
+                      className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-lg font-bold font-mono text-slate-900 focus:bg-white focus:outline-none focus:border-rose-500"
+                    />
+                    <span className="text-xs text-slate-500 font-mono">Insiden</span>
+                  </div>
+                  <p className="text-[11px] text-slate-400">
+                    Deteksi aktivitas malware atau malicious behavior pada endpoint.
+                  </p>
+                </div>
+
+                {/* 4. Crowdstrike Inactive 30 days */}
+                <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-xs space-y-2">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-semibold text-slate-700 flex items-center gap-1.5">
+                      <Clock className="w-4 h-4 text-slate-600" />
+                      Crowdstrike Inactive
+                    </span>
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200 font-bold">
+                      &gt; 30 Hari
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-3 pt-1">
+                    <input
+                      type="number"
+                      min={0}
+                      value={mailboxMetrics.crowdstrikeInactive30Days}
+                      onChange={e =>
+                        setMailboxMetrics({
+                          ...mailboxMetrics,
+                          crowdstrikeInactive30Days: Math.max(0, Number(e.target.value)),
+                        })
+                      }
+                      className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-lg font-bold font-mono text-slate-900 focus:bg-white focus:outline-none focus:border-slate-500"
+                    />
+                    <span className="text-xs text-slate-500 font-mono">Host</span>
+                  </div>
+                  <p className="text-[11px] text-slate-400">
+                    Jumlah sensor agent CrowdStrike yang tidak aktif / offline &gt; 30 hari.
+                  </p>
+                </div>
+              </div>
+
+              {/* Rincian Akun Mailbox / Host CrowdStrike (Jika ada nilai > 0) */}
               <div className="p-5 rounded-xl bg-white border border-slate-200 shadow-2xs space-y-4">
-                <div className="flex items-center gap-2 text-xs font-bold text-slate-800 uppercase tracking-wider">
-                  <Info className="w-4 h-4 text-blue-700" />
-                  <span>Executive Shift Notes &amp; Handover</span>
+                <div className="flex items-center justify-between pb-2 border-b border-slate-200">
+                  <div className="flex items-center gap-2">
+                    <Mail className="w-4 h-4 text-blue-700" />
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-slate-900">
+                      Rincian Akun Mailbox &amp; Host Terdeteksi ({mailboxMetrics.details?.length || 0} Terdata)
+                    </h4>
+                  </div>
+                  <span className="text-[11px] text-slate-500 font-mono">
+                    Catat email user atau nama laptop/PC yang terdampak
+                  </span>
                 </div>
 
-                <div>
-                  <label className="text-xs font-semibold text-slate-700 block mb-1">
-                    Daily Operations Executive Summary (for Superior &amp; Management)
-                  </label>
-                  <textarea
-                    rows={3}
-                    value={executiveSummary}
-                    onChange={e => setExecutiveSummary(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-xs text-slate-900 focus:bg-white focus:outline-none focus:border-blue-600 font-sans"
-                  />
+                {/* Form Quick Add Detail */}
+                <form onSubmit={handleAddMailboxDetail} className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-3">
+                  <div className="text-xs font-bold text-slate-800">
+                    Tambah Rincian Akun / Host Terdampak
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+                    <div>
+                      <label className="text-[11px] font-semibold text-slate-600 block mb-1">Kategori Masalah *</label>
+                      <select
+                        value={newMailboxDetail.type}
+                        onChange={e =>
+                          setNewMailboxDetail({
+                            ...newMailboxDetail,
+                            type: e.target.value as any,
+                          })
+                        }
+                        className="w-full bg-white border border-slate-300 rounded px-2.5 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-blue-600 font-medium"
+                      >
+                        <option value="MAILBOX_ALMOST_FULL">Mailbox Almost Full (&gt;=90%)</option>
+                        <option value="MAILBOX_FULL">Mailbox Full (100%)</option>
+                        <option value="CROWDSTRIKE_MALICIOUS">Crowdstrike Malicious Activity</option>
+                        <option value="CROWDSTRIKE_INACTIVE_30D">Crowdstrike Inactive &gt; 30 Days</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="text-[11px] font-semibold text-slate-600 block mb-1">User Email / Hostname *</label>
+                      <input
+                        type="text"
+                        placeholder="Contoh: hendra.pratama@donggi-senoro.com / LT-USO-04"
+                        value={newMailboxDetail.targetUserOrHost}
+                        onChange={e => setNewMailboxDetail({ ...newMailboxDetail, targetUserOrHost: e.target.value })}
+                        className="w-full bg-white border border-slate-300 rounded px-2.5 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-blue-600"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-[11px] font-semibold text-slate-600 block mb-1">Departemen / Lokasi</label>
+                      <input
+                        type="text"
+                        placeholder="Contoh: Finance & Accounting / Site Uso"
+                        value={newMailboxDetail.departmentOrLocation}
+                        onChange={e => setNewMailboxDetail({ ...newMailboxDetail, departmentOrLocation: e.target.value })}
+                        className="w-full bg-white border border-slate-300 rounded px-2.5 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-blue-600"
+                      />
+                    </div>
+
+                    <div className="flex items-end">
+                      <button
+                        type="submit"
+                        className="w-full px-3 py-1.5 text-xs font-semibold text-white bg-blue-700 hover:bg-blue-800 rounded-lg shadow-xs transition-colors flex items-center justify-center gap-1.5"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        Tambah Rincian
+                      </button>
+                    </div>
+                  </div>
+                </form>
+
+                {/* Table Details */}
+                <div className="border border-slate-200 rounded-xl overflow-hidden">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200">
+                      <tr>
+                        <th className="py-2.5 px-3">Kategori</th>
+                        <th className="py-2.5 px-3">User Email / Hostname</th>
+                        <th className="py-2.5 px-3">Departemen / Lokasi</th>
+                        <th className="py-2.5 px-3">Status / Keterangan</th>
+                        <th className="py-2.5 px-3 text-right">Aksi</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 font-mono text-xs">
+                      {(mailboxMetrics.details || []).length === 0 ? (
+                        <tr>
+                          <td colSpan={5} className="py-4 text-center text-slate-400 font-sans">
+                            Tidak ada rincian akun mailbox penuh atau insiden CrowdStrike yang dicatat.
+                          </td>
+                        </tr>
+                      ) : (
+                        (mailboxMetrics.details || []).map(item => (
+                          <tr key={item.id} className="hover:bg-slate-50 font-sans">
+                            <td className="py-2.5 px-3">
+                              <span
+                                className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold ${
+                                  item.type === 'MAILBOX_FULL' || item.type === 'CROWDSTRIKE_MALICIOUS'
+                                    ? 'bg-rose-100 text-rose-800 border border-rose-200'
+                                    : 'bg-amber-100 text-amber-800 border border-amber-200'
+                                }`}
+                              >
+                                {item.type === 'MAILBOX_ALMOST_FULL'
+                                  ? 'Mailbox Almost Full'
+                                  : item.type === 'MAILBOX_FULL'
+                                  ? 'Mailbox Full'
+                                  : item.type === 'CROWDSTRIKE_MALICIOUS'
+                                  ? 'Malicious Activity'
+                                  : 'Inactive 30 Days'}
+                              </span>
+                            </td>
+                            <td className="py-2.5 px-3 font-semibold text-slate-900 font-mono">{item.targetUserOrHost}</td>
+                            <td className="py-2.5 px-3 text-slate-600">{item.departmentOrLocation}</td>
+                            <td className="py-2.5 px-3 text-slate-500 text-[11px]">{item.notes}</td>
+                            <td className="py-2.5 px-3 text-right">
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteMailboxDetail(item.id)}
+                                className="text-slate-400 hover:text-rose-600 p-1 rounded"
+                                title="Hapus baris"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
                 </div>
 
-                <div>
-                  <label className="text-xs font-semibold text-slate-700 block mb-1">
-                    Shift Handover &amp; Night On-Call Briefing Notes
+                {/* Overall Notes */}
+                <div className="space-y-1 pt-2">
+                  <label className="text-xs font-semibold text-slate-700 block">
+                    Catatan Umum Mailbox &amp; CrowdStrike (Opsional)
                   </label>
                   <textarea
                     rows={2}
-                    value={shiftHandoverNotes}
-                    onChange={e => setShiftHandoverNotes(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-xs text-slate-900 focus:bg-white focus:outline-none focus:border-blue-600 font-sans"
+                    placeholder="Contoh: Seluruh user dengan mailbox mendekati kuota telah dikirimkan notifikasi pembersihan email. Insiden Crowdstrike terisolasi dengan baik..."
+                    value={mailboxMetrics.notes || ''}
+                    onChange={e => setMailboxMetrics({ ...mailboxMetrics, notes: e.target.value })}
+                    className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-xs text-slate-900 focus:bg-white focus:outline-none focus:border-blue-600"
                   />
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 6: SUMMARY (CATATAN KHUSUS MASALAH USER: REQUEST BARU, FOLLOWUP PO, BROKEN ASSET) */}
+          {activeSection === 'SUMMARY' && (
+            <div className="space-y-5">
+              {/* Guidance Banner */}
+              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 flex items-start gap-3">
+                <div className="p-2 rounded-lg bg-blue-100 text-blue-800 shrink-0">
+                  <FileText className="w-5 h-5" />
+                </div>
+                <div className="text-xs text-slate-700">
+                  <strong className="text-slate-900 block text-sm font-bold mb-0.5">
+                    Section 6: Summary &amp; Catatan Khusus Shift
+                  </strong>
+                  Petugas Helpdesk <strong>hanya cukup mengisi kolom di bawah ini apabila ada masalah tertentu dari user</strong> pada shift hari ini (seperti adanya request baru, tindak lanjut PO pengadaan, ataupun kerusakan aset). Jika tidak ada kendala tertentu, kolom dapat dibiarkan kosong.
+                </div>
+              </div>
+
+              {/* 3 User Issues Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* 1. Request Baru */}
+                <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-2xs space-y-2">
+                  <div className="flex items-center gap-2 pb-1 border-b border-slate-100">
+                    <div className="p-1.5 rounded-lg bg-blue-50 text-blue-700">
+                      <UserPlus className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-bold text-slate-900">Request Baru</h4>
+                      <span className="text-[10px] text-slate-400">Akun, Akses, atau Layanan Baru</span>
+                    </div>
+                  </div>
+                  <textarea
+                    rows={4}
+                    placeholder="Contoh: Permintaan akun AD & email baru untuk staff HR, penambahan hak akses share folder Site Uso..."
+                    value={operationalExceptions.newUserRequests || ''}
+                    onChange={e =>
+                      setOperationalExceptions({ ...operationalExceptions, newUserRequests: e.target.value })
+                    }
+                    className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-xs text-slate-900 focus:bg-white focus:outline-none focus:border-blue-600"
+                  />
+                </div>
+
+                {/* 2. Followup PO */}
+                <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-2xs space-y-2">
+                  <div className="flex items-center gap-2 pb-1 border-b border-slate-100">
+                    <div className="p-1.5 rounded-lg bg-amber-50 text-amber-700">
+                      <Package className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-bold text-slate-900">Follow-up PO</h4>
+                      <span className="text-[10px] text-slate-400">Pengadaan, Vendor &amp; Lisensi</span>
+                    </div>
+                  </div>
+                  <textarea
+                    rows={4}
+                    placeholder="Contoh: Koordinasi vendor PT Astragraphia untuk perpanjangan lisensi Adobe CC, status PO suku cadang switch..."
+                    value={operationalExceptions.poFollowUps || ''}
+                    onChange={e =>
+                      setOperationalExceptions({ ...operationalExceptions, poFollowUps: e.target.value })
+                    }
+                    className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-xs text-slate-900 focus:bg-white focus:outline-none focus:border-amber-600"
+                  />
+                </div>
+
+                {/* 3. Broken Asset */}
+                <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-2xs space-y-2">
+                  <div className="flex items-center gap-2 pb-1 border-b border-slate-100">
+                    <div className="p-1.5 rounded-lg bg-rose-50 text-rose-700">
+                      <Wrench className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-bold text-slate-900">Broken Asset</h4>
+                      <span className="text-[10px] text-slate-400">Kerusakan Aset / Hardware</span>
+                    </div>
+                  </div>
+                  <textarea
+                    rows={4}
+                    placeholder="Contoh: Monitor ruang meeting CCR blank, penggantian IP phone di Marine Jetty, kabel LAN port 14 bermasalah..."
+                    value={operationalExceptions.brokenAssets || ''}
+                    onChange={e =>
+                      setOperationalExceptions({ ...operationalExceptions, brokenAssets: e.target.value })
+                    }
+                    className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-xs text-slate-900 focus:bg-white focus:outline-none focus:border-rose-600"
+                  />
+                </div>
+              </div>
+
+              {/* General Shift Handover Briefing */}
+              <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-2xs space-y-2">
+                <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                  <Info className="w-3.5 h-3.5 text-blue-700" />
+                  Catatan Tambahan Serah Terima Shift (Handover Notes)
+                </label>
+                <textarea
+                  rows={2}
+                  placeholder="Ringkasan serah terima shift operasional (opsional)..."
+                  value={shiftHandoverNotes}
+                  onChange={e => setShiftHandoverNotes(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-xs text-slate-900 focus:bg-white focus:outline-none focus:border-blue-600 font-sans"
+                />
               </div>
 
               {/* Pre-Submission Verification Checklist */}
               <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-2xs space-y-3">
                 <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-                  Submission Integrity Verification
+                  Submission Integrity Verification (Kelayakan Laporan)
                 </h4>
 
                 <div className="space-y-2 text-xs">
                   <div className="flex items-center justify-between p-2.5 rounded-lg bg-slate-50 border border-slate-200">
-                    <span className="text-slate-700 font-medium">1. Tickets &amp; SLA Breakdown logged</span>
+                    <span className="text-slate-700 font-medium">1. Tickets &amp; SLA Breakdown (Wajib *)</span>
                     <span className="font-mono text-emerald-700 font-bold flex items-center gap-1">
-                      <CheckCircle2 className="w-4 h-4 text-emerald-600" /> Ready ({slaTickets.length} SLA Details)
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600" /> Ready ({tickets.open} Open · {tickets.closedToday} Closed)
                     </span>
                   </div>
 
                   <div className="flex items-center justify-between p-2.5 rounded-lg bg-slate-50 border border-slate-200">
-                    <span className="text-slate-700 font-medium">2. Server Check ({servers.length} nodes verified)</span>
+                    <span className="text-slate-700 font-medium">2. Server Check (Wajib *)</span>
                     <span className="font-mono text-emerald-700 font-bold flex items-center gap-1">
                       <CheckCircle2 className="w-4 h-4 text-emerald-600" /> {servers.filter(s => s.status === 'ONLINE').length}/{servers.length} Online
                     </span>
                   </div>
 
                   <div className="flex items-center justify-between p-2.5 rounded-lg bg-slate-50 border border-slate-200">
-                    <span className="text-slate-700 font-medium">3. MS365 &amp; Software Others status updated</span>
-                    <span className="font-mono text-emerald-700 font-bold flex items-center gap-1">
-                      <CheckCircle2 className="w-4 h-4 text-emerald-600" /> Ready
+                    <span className="text-slate-700 font-medium">3. MS365 and Software Others (Opsional)</span>
+                    <span className="font-mono text-slate-600 font-bold flex items-center gap-1">
+                      <CheckCircle2 className="w-4 h-4 text-slate-400" /> Terpantau
                     </span>
                   </div>
 
                   <div className="flex items-center justify-between p-2.5 rounded-lg bg-slate-50 border border-slate-200">
                     <span className="text-slate-700 font-medium">
-                      4. Physical VTC Inspection Photos ({physicalInspections.filter(p => p.photoEvidenceUrl).length}/{physicalInspections.length} Attached)
+                      4. Physical Check Meeting Room ({physicalInspections.filter(p => p.photoEvidenceUrl).length}/{physicalInspections.length} Attached)
                     </span>
                     {isVtcComplete ? (
                       <span className="font-mono text-emerald-700 font-bold flex items-center gap-1">
@@ -1758,9 +2174,16 @@ export const ReportFormModal: React.FC<ReportFormModalProps> = ({ date }) => {
                       </span>
                     ) : (
                       <span className="font-mono text-rose-700 font-bold flex items-center gap-1">
-                        <AlertTriangle className="w-4 h-4 text-rose-600" /> {missingPhotos.length} Photos Missing
+                        <AlertTriangle className="w-4 h-4 text-rose-600" /> {missingPhotos.length} Foto Belum Dilampirkan
                       </span>
                     )}
+                  </div>
+
+                  <div className="flex items-center justify-between p-2.5 rounded-lg bg-slate-50 border border-slate-200">
+                    <span className="text-slate-700 font-medium">5. Mailbox and CrowdStrike</span>
+                    <span className="font-mono text-emerald-700 font-bold flex items-center gap-1">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600" /> Ready ({mailboxMetrics.mailboxAlmostFull} Quota Warning · {mailboxMetrics.crowdstrikeMaliciousActivity} Detections)
+                    </span>
                   </div>
                 </div>
 
@@ -1769,9 +2192,9 @@ export const ReportFormModal: React.FC<ReportFormModalProps> = ({ date }) => {
                   <Lock className="w-5 h-5 text-amber-700 shrink-0 mt-0.5" />
                   <div className="text-xs text-slate-700 leading-relaxed">
                     <strong className="text-amber-900 block font-bold mb-0.5">
-                      Immutable Record Lock Policy
+                      Immutable Record Lock Policy (ISO 27001)
                     </strong>
-                    Setelah menekan tombol Submit, laporan ini akan dikunci secara permanen dengan hash digital SHA-256. Notifikasi otomatis akan dikirimkan kepada Superior ICT Manager untuk verifikasi dan tanda tangan digital.
+                    Setelah menekan tombol Submit, seluruh data laporan harian akan dikunci secara permanen dengan hash digital SHA-256. Notifikasi otomatis akan dikirimkan kepada Superior ICT Manager untuk verifikasi dan tanda tangan digital.
                   </div>
                 </div>
               </div>
@@ -1788,7 +2211,7 @@ export const ReportFormModal: React.FC<ReportFormModalProps> = ({ date }) => {
               </span>
             ) : (
               <span className="text-amber-800 font-bold flex items-center gap-1">
-                <AlertTriangle className="w-4 h-4 text-amber-600" /> {missingPhotos.length} VTC inspection photos pending
+                <AlertTriangle className="w-4 h-4 text-amber-600" /> {missingPhotos.length} foto inspeksi meeting room pending
               </span>
             )}
           </div>
@@ -1802,14 +2225,31 @@ export const ReportFormModal: React.FC<ReportFormModalProps> = ({ date }) => {
               Cancel
             </button>
 
+            {activeSection !== 'TICKETS' && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (activeSection === 'SERVERS') setActiveSection('TICKETS');
+                  else if (activeSection === 'LICENSES') setActiveSection('SERVERS');
+                  else if (activeSection === 'MEETING_ROOMS') setActiveSection('LICENSES');
+                  else if (activeSection === 'MAILBOX_CROWDSTRIKE') setActiveSection('MEETING_ROOMS');
+                  else if (activeSection === 'SUMMARY') setActiveSection('MAILBOX_CROWDSTRIKE');
+                }}
+                className="px-3.5 py-2 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-100 border border-slate-300 rounded-lg shadow-2xs transition-colors"
+              >
+                ← Back
+              </button>
+            )}
+
             {activeSection !== 'SUMMARY' ? (
               <button
                 type="button"
                 onClick={() => {
                   if (activeSection === 'TICKETS') setActiveSection('SERVERS');
                   else if (activeSection === 'SERVERS') setActiveSection('LICENSES');
-                  else if (activeSection === 'LICENSES') setActiveSection('VTC');
-                  else if (activeSection === 'VTC') setActiveSection('SUMMARY');
+                  else if (activeSection === 'LICENSES') setActiveSection('MEETING_ROOMS');
+                  else if (activeSection === 'MEETING_ROOMS') setActiveSection('MAILBOX_CROWDSTRIKE');
+                  else if (activeSection === 'MAILBOX_CROWDSTRIKE') setActiveSection('SUMMARY');
                 }}
                 className="px-4 py-2 text-xs font-semibold text-white bg-blue-700 hover:bg-blue-800 rounded-lg shadow-xs transition-colors"
               >

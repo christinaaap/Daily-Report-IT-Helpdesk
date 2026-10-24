@@ -19,8 +19,12 @@ import {
   History,
   FileCheck,
   UserCheck,
-  ShoppingCart,
   Filter,
+  Mail,
+  ShieldAlert,
+  FileText,
+  AlertCircle,
+  Package,
 } from 'lucide-react';
 import { DigitalSignaturePad } from './DigitalSignaturePad';
 
@@ -38,7 +42,7 @@ export const ReportDetailModal: React.FC<ReportDetailModalProps> = ({ reportId }
   const [managerComments, setManagerComments] = useState('');
   const [signatureDataUrl, setSignatureDataUrl] = useState<string | null>(null);
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
-  const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'PHOTOS' | 'SERVERS' | 'LICENSES' | 'AUDIT'>('OVERVIEW');
+  const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'SERVERS' | 'LICENSES' | 'PHOTOS' | 'SECURITY' | 'AUDIT'>('OVERVIEW');
   const [expandedPhoto, setExpandedPhoto] = useState<string | null>(null);
   const [slaFilter, setSlaFilter] = useState<'ALL' | 'SLA_BREACHED' | 'SLA_AT_RISK'>('ALL');
 
@@ -101,7 +105,6 @@ export const ReportDetailModal: React.FC<ReportDetailModalProps> = ({ reportId }
   const ms365Items = (report.licenses?.items || []).filter(item => item.category === 'MS365');
   const otherItems = (report.licenses?.items || []).filter(item => item.category === 'OTHERS');
   const userAssignments = report.licenses?.userAssignments || [];
-  const purchases = report.licenses?.purchases || [];
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 overflow-y-auto print:p-0 print:bg-white print:text-black">
@@ -160,66 +163,82 @@ export const ReportDetailModal: React.FC<ReportDetailModalProps> = ({ reportId }
           </div>
         </div>
 
-        {/* Tab Sub-navigation: Revised with Server Check and MS365 dan Software Others */}
-        <div className="px-6 pt-3 border-b border-slate-200 bg-white flex items-center gap-4 overflow-x-auto shrink-0 print:hidden">
+        {/* Tab Sub-navigation: 6 Sections */}
+        <div className="px-6 pt-3 border-b border-slate-200 bg-white flex items-center gap-3 overflow-x-auto shrink-0 print:hidden">
           <button
             type="button"
             onClick={() => setActiveTab('OVERVIEW')}
-            className={`pb-2.5 text-xs font-semibold border-b-2 transition-colors ${
+            className={`pb-2.5 text-xs font-semibold border-b-2 transition-colors whitespace-nowrap flex items-center gap-1.5 ${
               activeTab === 'OVERVIEW'
                 ? 'border-blue-700 text-blue-700'
                 : 'border-transparent text-slate-500 hover:text-slate-800'
             }`}
           >
-            Operational Overview
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab('PHOTOS')}
-            className={`pb-2.5 text-xs font-semibold border-b-2 flex items-center gap-1.5 transition-colors ${
-              activeTab === 'PHOTOS'
-                ? 'border-blue-700 text-blue-700'
-                : 'border-transparent text-slate-500 hover:text-slate-800'
-            }`}
-          >
-            <Video className="w-3.5 h-3.5" />
-            VTC Physical Proof ({report.physicalInspections.filter(p => p.photoEvidenceUrl).length}/{report.physicalInspections.length})
+            <Ticket className="w-3.5 h-3.5" />
+            1. Tickets &amp; SLA
           </button>
           <button
             type="button"
             onClick={() => setActiveTab('SERVERS')}
-            className={`pb-2.5 text-xs font-semibold border-b-2 flex items-center gap-1.5 transition-colors ${
+            className={`pb-2.5 text-xs font-semibold border-b-2 flex items-center gap-1.5 transition-colors whitespace-nowrap ${
               activeTab === 'SERVERS'
                 ? 'border-blue-700 text-blue-700'
                 : 'border-transparent text-slate-500 hover:text-slate-800'
             }`}
           >
             <Server className="w-3.5 h-3.5" />
-            Server Check ({report.servers.filter(s => s.status === 'ONLINE').length}/{report.servers.length} Online)
+            2. Server Check ({report.servers.filter(s => s.status === 'ONLINE').length}/{report.servers.length})
           </button>
           <button
             type="button"
             onClick={() => setActiveTab('LICENSES')}
-            className={`pb-2.5 text-xs font-semibold border-b-2 flex items-center gap-1.5 transition-colors ${
+            className={`pb-2.5 text-xs font-semibold border-b-2 flex items-center gap-1.5 transition-colors whitespace-nowrap ${
               activeTab === 'LICENSES'
                 ? 'border-blue-700 text-blue-700'
                 : 'border-transparent text-slate-500 hover:text-slate-800'
             }`}
           >
             <FileKey className="w-3.5 h-3.5" />
-            MS365 dan Software Others
+            3. MS365 and Software Others
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('PHOTOS')}
+            className={`pb-2.5 text-xs font-semibold border-b-2 flex items-center gap-1.5 transition-colors whitespace-nowrap ${
+              activeTab === 'PHOTOS'
+                ? 'border-blue-700 text-blue-700'
+                : 'border-transparent text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            <Video className="w-3.5 h-3.5" />
+            4. Physical Check Meeting Room ({report.physicalInspections.filter(p => p.photoEvidenceUrl).length}/{report.physicalInspections.length})
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('SECURITY')}
+            className={`pb-2.5 text-xs font-semibold border-b-2 flex items-center gap-1.5 transition-colors whitespace-nowrap ${
+              activeTab === 'SECURITY'
+                ? 'border-blue-700 text-blue-700'
+                : 'border-transparent text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            <ShieldAlert className="w-3.5 h-3.5" />
+            5. Mailbox and CrowdStrike
+            {report.mailboxCrowdstrike && ((report.mailboxCrowdstrike.crowdstrikeMaliciousActivity || 0) > 0 || (report.mailboxCrowdstrike.mailboxFull || 0) > 0) && (
+              <span className="w-2 h-2 rounded-full bg-rose-500" />
+            )}
           </button>
           <button
             type="button"
             onClick={() => setActiveTab('AUDIT')}
-            className={`pb-2.5 text-xs font-semibold border-b-2 flex items-center gap-1.5 transition-colors ${
+            className={`pb-2.5 text-xs font-semibold border-b-2 flex items-center gap-1.5 transition-colors whitespace-nowrap ${
               activeTab === 'AUDIT'
                 ? 'border-blue-700 text-blue-700'
                 : 'border-transparent text-slate-500 hover:text-slate-800'
             }`}
           >
-            <History className="w-3.5 h-3.5" />
-            Audit Trail
+            <FileText className="w-3.5 h-3.5" />
+            6. Summary &amp; Audit Trail
           </button>
         </div>
 
@@ -814,84 +833,243 @@ export const ReportDetailModal: React.FC<ReportDetailModalProps> = ({ reportId }
                   </table>
                 </div>
               </div>
+            </div>
+          )}
 
-              {/* New Purchases */}
-              <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-2xs space-y-3">
+          {/* TAB 5: MAILBOX AND CROWDSTRIKE (SECTION 5) */}
+          {activeTab === 'SECURITY' && (
+            <div className="space-y-6">
+              <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-2xs space-y-4">
                 <div className="flex items-center justify-between pb-2 border-b border-slate-200">
                   <div className="flex items-center gap-2">
-                    <ShoppingCart className="w-4 h-4 text-blue-700" />
-                    <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900">
-                      3. Pembelian Software Baru kepada User ({purchases.length} Pembelian)
-                    </h3>
+                    <ShieldAlert className="w-4 h-4 text-rose-600" />
+                    <div>
+                      <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900">
+                        Section 5: Mailbox and CrowdStrike Monitoring
+                      </h3>
+                      <p className="text-[11px] text-slate-500 mt-0.5">
+                        Pemantauan kapasitas mailbox email user dan status endpoint protection CrowdStrike Falcon.
+                      </p>
+                    </div>
+                  </div>
+                  <span className="text-xs font-mono font-bold text-slate-700 bg-slate-100 px-2.5 py-1 rounded border border-slate-200">
+                    Shift Security &amp; Messaging Status
+                  </span>
+                </div>
+
+                {/* 4 Metrics Cards */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                  <div className="p-4 rounded-xl border border-amber-200 bg-amber-50/60">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-semibold text-amber-900">Mailbox Almost Full</span>
+                      <Mail className="w-4 h-4 text-amber-600" />
+                    </div>
+                    <div className="text-2xl font-bold font-mono text-amber-950 mt-2">
+                      {report.mailboxCrowdstrike?.mailboxAlmostFull ?? 0}
+                    </div>
+                    <span className="text-[10px] text-amber-700 font-medium mt-0.5 block">
+                      &gt; 90% Storage Capacity
+                    </span>
+                  </div>
+
+                  <div className="p-4 rounded-xl border border-rose-200 bg-rose-50/60">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-semibold text-rose-900">Mailbox Full</span>
+                      <Mail className="w-4 h-4 text-rose-600" />
+                    </div>
+                    <div className="text-2xl font-bold font-mono text-rose-950 mt-2">
+                      {report.mailboxCrowdstrike?.mailboxFull ?? 0}
+                    </div>
+                    <span className="text-[10px] text-rose-700 font-medium mt-0.5 block">
+                      100% Inability to Receive Mail
+                    </span>
+                  </div>
+
+                  <div className="p-4 rounded-xl border border-red-300 bg-red-100/60">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-semibold text-red-950">Crowdstrike Detection</span>
+                      <ShieldAlert className="w-4 h-4 text-red-700" />
+                    </div>
+                    <div className="text-2xl font-bold font-mono text-red-950 mt-2">
+                      {report.mailboxCrowdstrike?.crowdstrikeMaliciousActivity ?? 0}
+                    </div>
+                    <span className="text-[10px] text-red-800 font-semibold mt-0.5 block">
+                      Malicious Activity Detected
+                    </span>
+                  </div>
+
+                  <div className="p-4 rounded-xl border border-slate-200 bg-slate-50">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-semibold text-slate-800">Crowdstrike Inactive</span>
+                      <Clock className="w-4 h-4 text-slate-500" />
+                    </div>
+                    <div className="text-2xl font-bold font-mono text-slate-900 mt-2">
+                      {report.mailboxCrowdstrike?.crowdstrikeInactive30Days ?? 0}
+                    </div>
+                    <span className="text-[10px] text-slate-600 font-medium mt-0.5 block">
+                      Inactive for 30+ Days
+                    </span>
                   </div>
                 </div>
 
-                <div className="border border-slate-200 rounded-xl overflow-x-auto">
-                  <table className="w-full text-left text-xs">
-                    <thead className="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200">
-                      <tr>
-                        <th className="py-2.5 px-3">Software</th>
-                        <th className="py-2.5 px-3">Pemohon / Departemen</th>
-                        <th className="py-2.5 px-3">Jumlah Seats</th>
-                        <th className="py-2.5 px-3">No. PO</th>
-                        <th className="py-2.5 px-3">Vendor</th>
-                        <th className="py-2.5 px-3">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100 font-mono">
-                      {purchases.length === 0 ? (
+                {/* Details Table */}
+                <div className="space-y-2 pt-2">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700">
+                    Detail Insiden / Tindakan Terkait
+                  </h4>
+                  <div className="border border-slate-200 rounded-xl overflow-x-auto">
+                    <table className="w-full text-left text-xs">
+                      <thead className="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200">
                         <tr>
-                          <td colSpan={6} className="py-4 text-center text-slate-400 font-mono font-sans">
-                            Tidak ada transaksi pembelian software baru pada shift ini.
-                          </td>
+                          <th className="py-2.5 px-3">Tipe Peringatan</th>
+                          <th className="py-2.5 px-3">Target (User / Host)</th>
+                          <th className="py-2.5 px-3">Departemen / Lokasi</th>
+                          <th className="py-2.5 px-3">Catatan / Tindakan</th>
                         </tr>
-                      ) : (
-                        purchases.map(pur => (
-                          <tr key={pur.id} className="hover:bg-slate-50 font-sans">
-                            <td className="py-2.5 px-3 font-semibold text-slate-900">{pur.softwareName}</td>
-                            <td className="py-2.5 px-3 text-slate-600">{pur.targetUser} ({pur.department})</td>
-                            <td className="py-2.5 px-3 font-mono font-bold text-slate-800">{pur.quantity} Seats</td>
-                            <td className="py-2.5 px-3 font-mono text-slate-600">{pur.poNumber}</td>
-                            <td className="py-2.5 px-3 text-slate-600">{pur.vendor}</td>
-                            <td className="py-2.5 px-3">
-                              <span className="font-mono text-[10px] px-2 py-0.5 rounded-full font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
-                                {pur.status}
-                              </span>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {(!report.mailboxCrowdstrike?.details || report.mailboxCrowdstrike.details.length === 0) ? (
+                          <tr>
+                            <td colSpan={4} className="py-4 text-center text-slate-400 font-mono">
+                              Tidak ada rincian peringatan mailbox atau CrowdStrike yang perlu ditindaklanjuti.
                             </td>
                           </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
+                        ) : (
+                          report.mailboxCrowdstrike.details.map(item => (
+                            <tr key={item.id} className="hover:bg-slate-50">
+                              <td className="py-2.5 px-3">
+                                <span className={`text-[10px] font-mono px-2 py-0.5 rounded font-bold border ${
+                                  item.type === 'CROWDSTRIKE_MALICIOUS'
+                                    ? 'bg-rose-100 text-rose-800 border-rose-300'
+                                    : item.type === 'MAILBOX_FULL'
+                                    ? 'bg-red-50 text-red-700 border-red-200'
+                                    : 'bg-amber-50 text-amber-800 border-amber-200'
+                                }`}>
+                                  {item.type === 'MAILBOX_ALMOST_FULL'
+                                    ? 'Mailbox Almost Full'
+                                    : item.type === 'MAILBOX_FULL'
+                                    ? 'Mailbox Full'
+                                    : item.type === 'CROWDSTRIKE_MALICIOUS'
+                                    ? 'Malicious Activity'
+                                    : 'Inactive > 30 Days'}
+                                </span>
+                              </td>
+                              <td className="py-2.5 px-3 font-semibold text-slate-900">{item.targetUserOrHost}</td>
+                              <td className="py-2.5 px-3 text-slate-600">{item.departmentOrLocation || '-'}</td>
+                              <td className="py-2.5 px-3 text-slate-600">{item.notes || '-'}</td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
+
+                {report.mailboxCrowdstrike?.notes && (
+                  <div className="pt-2 text-xs text-slate-600 bg-slate-50 p-3 rounded-lg border border-slate-200">
+                    <strong className="text-slate-800 font-semibold block mb-0.5">Catatan Keamanan &amp; Mailbox:</strong>
+                    {report.mailboxCrowdstrike.notes}
+                  </div>
+                )}
               </div>
             </div>
           )}
 
-          {/* TAB 5: AUDIT TRAIL */}
+          {/* TAB 6: SUMMARY & AUDIT TRAIL */}
           {activeTab === 'AUDIT' && (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between text-xs text-slate-600 pb-2 border-b border-slate-200">
-                <span className="font-semibold">Cryptographic Audit Log &amp; Event Sequence</span>
-                <span className="font-mono text-blue-700 font-bold">Immutable Ledger</span>
-              </div>
-
-              <div className="relative pl-6 border-l-2 border-slate-200 space-y-6 my-2">
-                {report.auditTrail.map((entry, idx) => (
-                  <div key={idx} className="relative group">
-                    <div className="absolute -left-[31px] top-1 w-3.5 h-3.5 rounded-full bg-blue-600 border-2 border-white shadow-xs" />
-                    <div className="text-[11px] font-mono text-slate-500 mb-0.5">{entry.timestamp}</div>
-                    <div className="text-xs font-bold text-slate-900 flex items-center gap-2">
-                      <span>{entry.action}</span>
-                      <span className="text-[10px] font-mono px-2 py-0.2 rounded bg-slate-100 text-slate-600 border border-slate-200 font-normal">
-                        by {entry.actorName} ({entry.actorRole})
-                      </span>
+            <div className="space-y-6">
+              {/* Section 6 Summary Card */}
+              <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-2xs space-y-4">
+                <div className="flex items-center justify-between pb-2 border-b border-slate-200">
+                  <div className="flex items-center gap-2">
+                    <FileText className="w-4 h-4 text-blue-700" />
+                    <div>
+                      <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900">
+                        Section 6: Summary (User Requests, Follow-up PO &amp; Broken Asset)
+                      </h3>
+                      <p className="text-[11px] text-slate-500 mt-0.5">
+                        Ringkasan khusus kendala atau kebutuhan user yang perlu diteruskan ke shift berikutnya atau manajemen.
+                      </p>
                     </div>
-                    <p className="text-xs text-slate-600 mt-1 leading-relaxed bg-slate-50 p-2.5 rounded-lg border border-slate-200 font-mono">
-                      {entry.details}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {/* Request Baru */}
+                  <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/70 space-y-2">
+                    <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                      <Ticket className="w-3.5 h-3.5 text-blue-600" />
+                      1. Request Baru dari User
+                    </span>
+                    <p className="text-xs text-slate-600 font-sans whitespace-pre-wrap leading-relaxed">
+                      {report.operationalExceptions?.newUserRequests?.trim()
+                        ? report.operationalExceptions.newUserRequests
+                        : 'Tidak ada permintaan baru yang tertunda.'}
                     </p>
                   </div>
-                ))}
+
+                  {/* Follow-up PO */}
+                  <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/70 space-y-2">
+                    <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                      <Clock className="w-3.5 h-3.5 text-amber-600" />
+                      2. Follow-up Purchase Order (PO)
+                    </span>
+                    <p className="text-xs text-slate-600 font-sans whitespace-pre-wrap leading-relaxed">
+                      {report.operationalExceptions?.poFollowUps?.trim()
+                        ? report.operationalExceptions.poFollowUps
+                        : 'Tidak ada follow-up pengadaan/PO aktif.'}
+                    </p>
+                  </div>
+
+                  {/* Broken Asset */}
+                  <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/70 space-y-2">
+                    <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                      <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />
+                      3. Broken Asset / Kerusakan
+                    </span>
+                    <p className="text-xs text-slate-600 font-sans whitespace-pre-wrap leading-relaxed">
+                      {report.operationalExceptions?.brokenAssets?.trim()
+                        ? report.operationalExceptions.brokenAssets
+                        : 'Tidak ada laporan kerusakan aset hardware.'}
+                    </p>
+                  </div>
+                </div>
+
+                {report.operationalExceptions?.generalNotes && (
+                  <div className="text-xs text-slate-600 bg-blue-50/50 p-3 rounded-lg border border-blue-100">
+                    <strong className="text-blue-900 font-semibold block mb-0.5">Catatan Tambahan:</strong>
+                    {report.operationalExceptions.generalNotes}
+                  </div>
+                )}
+              </div>
+
+              {/* Cryptographic Audit Log */}
+              <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-2xs space-y-4">
+                <div className="flex items-center justify-between text-xs text-slate-600 pb-2 border-b border-slate-200">
+                  <span className="font-semibold flex items-center gap-1.5">
+                    <History className="w-4 h-4 text-slate-500" />
+                    Cryptographic Audit Log &amp; Event Sequence
+                  </span>
+                  <span className="font-mono text-blue-700 font-bold">Immutable Ledger</span>
+                </div>
+
+                <div className="relative pl-6 border-l-2 border-slate-200 space-y-6 my-2">
+                  {report.auditTrail.map((entry, idx) => (
+                    <div key={idx} className="relative group">
+                      <div className="absolute -left-[31px] top-1 w-3.5 h-3.5 rounded-full bg-blue-600 border-2 border-white shadow-xs" />
+                      <div className="text-[11px] font-mono text-slate-500 mb-0.5">{entry.timestamp}</div>
+                      <div className="text-xs font-bold text-slate-900 flex items-center gap-2">
+                        <span>{entry.action}</span>
+                        <span className="text-[10px] font-mono px-2 py-0.2 rounded bg-slate-100 text-slate-600 border border-slate-200 font-normal">
+                          by {entry.actorName} ({entry.actorRole})
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-600 mt-1 leading-relaxed bg-slate-50 p-2.5 rounded-lg border border-slate-200 font-mono">
+                        {entry.details}
+                      </p>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           )}
