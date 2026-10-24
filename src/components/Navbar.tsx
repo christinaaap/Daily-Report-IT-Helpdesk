@@ -287,6 +287,45 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
           </div>
         </div>
       </div>
+
+      {/* Mobile & Tablet Sub-Navbar Tab Bar */}
+      <div className="md:hidden border-t border-slate-200/80 bg-slate-50/95 px-3 py-1.5 flex items-center justify-around gap-1.5 text-xs">
+        <button
+          type="button"
+          onClick={() => setActiveTab('calendar')}
+          className={`flex-1 py-1.5 px-2 rounded-lg text-center font-medium transition-colors ${
+            activeTab === 'calendar'
+              ? 'bg-blue-700 text-white font-bold shadow-2xs'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
+          }`}
+        >
+          Calendar
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('fleet')}
+          className={`flex-1 py-1.5 px-2 rounded-lg text-center font-medium transition-colors ${
+            activeTab === 'fleet'
+              ? 'bg-blue-700 text-white font-bold shadow-2xs'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
+          }`}
+        >
+          Infrastructure Fleet
+        </button>
+        {(currentUser.role === 'ADMINISTRATOR' || currentUser.role === 'ICT_MANAGER') && (
+          <button
+            type="button"
+            onClick={() => setActiveTab('audit')}
+            className={`flex-1 py-1.5 px-2 rounded-lg text-center font-medium transition-colors ${
+              activeTab === 'audit'
+                ? 'bg-blue-700 text-white font-bold shadow-2xs'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
+            }`}
+          >
+            Audit Trail
+          </button>
+        )}
+      </div>
     </header>
   );
 };

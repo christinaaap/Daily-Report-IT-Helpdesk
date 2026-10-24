@@ -350,24 +350,24 @@ export const CalendarDashboard: React.FC = () => {
         </div>
 
         {/* Days of Week */}
-        <div className="grid grid-cols-7 gap-2 text-center text-xs font-semibold text-slate-500 uppercase tracking-wider">
-          <div className="py-1 text-rose-600">Sun (Duty)</div>
-          <div className="py-1">Mon</div>
-          <div className="py-1">Tue</div>
-          <div className="py-1">Wed</div>
-          <div className="py-1">Thu</div>
-          <div className="py-1">Fri</div>
-          <div className="py-1 text-blue-700">Sat</div>
+        <div className="grid grid-cols-7 gap-1 sm:gap-2 text-center text-[11px] sm:text-xs font-semibold text-slate-500 uppercase tracking-wider">
+          <div className="py-1 text-rose-600 font-bold"><span className="hidden sm:inline">Sun (Duty)</span><span className="sm:hidden">Sun*</span></div>
+          <div className="py-1"><span className="hidden sm:inline">Mon</span><span className="sm:hidden">Mon</span></div>
+          <div className="py-1"><span className="hidden sm:inline">Tue</span><span className="sm:hidden">Tue</span></div>
+          <div className="py-1"><span className="hidden sm:inline">Wed</span><span className="sm:hidden">Wed</span></div>
+          <div className="py-1"><span className="hidden sm:inline">Thu</span><span className="sm:hidden">Thu</span></div>
+          <div className="py-1"><span className="hidden sm:inline">Fri</span><span className="sm:hidden">Fri</span></div>
+          <div className="py-1 text-blue-700 font-bold"><span className="hidden sm:inline">Sat</span><span className="sm:hidden">Sat</span></div>
         </div>
 
         {/* Calendar Grid */}
-        <div className="grid grid-cols-7 gap-2">
+        <div className="grid grid-cols-7 gap-1 sm:gap-2">
           {daysArray.map((dayNum, index) => {
             if (!dayNum) {
               return (
                 <div
                   key={`empty-${index}`}
-                  className="min-h-[100px] sm:min-h-[115px] rounded-lg bg-slate-50/50 border border-slate-100"
+                  className="min-h-[85px] sm:min-h-[110px] rounded-lg bg-slate-50/50 border border-slate-100"
                 />
               );
             }
@@ -404,7 +404,6 @@ export const CalendarDashboard: React.FC = () => {
                 indicatorText = 'Rejected / Needs Revision';
               }
             } else if (isMissingDay) {
-              // Highlight day that needs report and has an active reminder
               statusColor = 'border-amber-300 bg-amber-50/40 text-amber-950 hover:border-amber-400 ring-1 ring-amber-200';
               indicatorBg = 'bg-amber-400 animate-ping';
               indicatorText = 'Missing / Belum Diisi (Reminder Aktif)';
@@ -424,21 +423,20 @@ export const CalendarDashboard: React.FC = () => {
                   } else if (eligibility.isEligible && (isToday || dateStr <= todayDate || isAdmin)) {
                     openCreateModal(dateStr);
                   } else if (isMissingDay) {
-                    // Open reminder details
                     openRemindersModal();
                   }
                 }}
-                className={`min-h-[100px] sm:min-h-[115px] p-2.5 rounded-lg border transition-all cursor-pointer flex flex-col justify-between group shadow-2xs ${statusColor} ${
+                className={`min-h-[85px] sm:min-h-[110px] p-1.5 sm:p-2.5 rounded-lg border transition-all cursor-pointer flex flex-col justify-between group shadow-2xs ${statusColor} ${
                   isToday ? 'ring-2 ring-blue-600 bg-blue-50/30 shadow-md' : ''
                 } ${isSelected && !isToday ? 'ring-2 ring-purple-500 shadow-xs' : ''}`}
               >
                 {/* Header of day cell */}
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5 flex-wrap">
+                  <div className="flex items-center gap-1 sm:gap-1.5 flex-wrap">
                     <span
-                      className={`text-sm font-mono ${
+                      className={`text-xs sm:text-sm font-mono ${
                         isToday
-                          ? 'text-blue-700 font-extrabold text-base'
+                          ? 'text-blue-700 font-extrabold text-sm sm:text-base'
                           : isSunday
                           ? 'text-rose-600 font-bold'
                           : 'text-slate-800 font-bold'
@@ -447,13 +445,15 @@ export const CalendarDashboard: React.FC = () => {
                       {dayNum}
                     </span>
                     {isToday && (
-                      <span className="text-[10px] font-bold uppercase bg-blue-600 text-white px-1.5 py-0.5 rounded font-mono shadow-xs animate-pulse">
-                        Hari Ini
+                      <span className="text-[8px] sm:text-[10px] font-bold uppercase bg-blue-600 text-white px-1 sm:px-1.5 py-0.2 sm:py-0.5 rounded font-mono shadow-xs animate-pulse">
+                        <span className="hidden sm:inline">Hari Ini</span>
+                        <span className="sm:hidden">Now</span>
                       </span>
                     )}
                     {isSelected && !isToday && (
-                      <span className="text-[10px] font-medium uppercase bg-purple-100 text-purple-800 px-1 rounded font-mono">
-                        Dipilih
+                      <span className="text-[8px] sm:text-[10px] font-medium uppercase bg-purple-100 text-purple-800 px-1 rounded font-mono">
+                        <span className="hidden sm:inline">Dipilih</span>
+                        <span className="sm:hidden">Sel</span>
                       </span>
                     )}
                   </div>
@@ -461,71 +461,78 @@ export const CalendarDashboard: React.FC = () => {
                   {/* Indicator Dot */}
                   <div
                     title={indicatorText}
-                    className={`w-2.5 h-2.5 rounded-full ${indicatorBg}`}
+                    className={`w-2 sm:w-2.5 h-2 sm:h-2.5 rounded-full ${indicatorBg}`}
                   />
                 </div>
 
                 {/* Body Content of Day Cell */}
-                <div className="my-1.5">
+                <div className="my-1">
                   {report ? (
                     <div className="space-y-0.5">
-                      <div className="text-[11px] font-semibold truncate text-slate-800">
+                      <div className="text-[10px] sm:text-[11px] font-semibold truncate text-slate-800">
                         {report.dutyEngineerName.split(' ')[0]}
                       </div>
-                      <div className="text-[10px] font-medium flex items-center gap-1 mt-0.5">
-                        <span className={`w-2 h-2 rounded-full shrink-0 ${indicatorBg}`} />
+                      <div className="text-[9px] sm:text-[10px] font-medium flex items-center gap-1 mt-0.5">
+                        <span className={`w-1.5 sm:w-2 h-1.5 sm:h-2 rounded-full shrink-0 ${indicatorBg}`} />
                         <span
-                          className={
+                          className={`truncate ${
                             report.status === 'APPROVED'
                               ? 'text-emerald-700 font-semibold'
                               : report.status === 'SUBMITTED'
                               ? 'text-amber-700 font-semibold'
                               : 'text-rose-700 font-semibold'
-                          }
+                          }`}
                         >
-                          {report.status === 'APPROVED'
-                            ? 'Approved'
-                            : report.status === 'SUBMITTED'
-                            ? 'Submitted'
-                            : 'Rejected'}
+                          <span className="hidden sm:inline">
+                            {report.status === 'APPROVED' ? 'Approved' : report.status === 'SUBMITTED' ? 'Submitted' : 'Rejected'}
+                          </span>
+                          <span className="sm:hidden">
+                            {report.status === 'APPROVED' ? 'Appr' : report.status === 'SUBMITTED' ? 'Subm' : 'Rej'}
+                          </span>
                         </span>
                       </div>
                     </div>
                   ) : isMissingDay ? (
                     <div className="space-y-0.5">
-                      <div className="text-[10px] text-amber-800 font-bold flex items-center gap-1">
-                        <AlertTriangle className="w-3 h-3 text-amber-600 shrink-0" />
-                        <span>Belum Diisi</span>
+                      <div className="text-[9px] sm:text-[10px] text-amber-800 font-bold flex items-center gap-1">
+                        <AlertTriangle className="w-2.5 sm:w-3 h-2.5 sm:h-3 text-amber-600 shrink-0" />
+                        <span className="truncate">Belum Diisi</span>
                       </div>
-                      <div className="text-[9px] text-slate-500 font-mono truncate">
+                      <div className="text-[8px] sm:text-[9px] text-slate-500 font-mono truncate hidden sm:block">
                         Duty: {getRosterForDate(dateStr, manualSchedules, dutyOverrideId, teamMembers).siteDutyEngineerId ? teamMembers.find(m => m.id === getRosterForDate(dateStr, manualSchedules, dutyOverrideId, teamMembers).siteDutyEngineerId)?.name.split(' ')[0] : 'Belum Ada'}
                       </div>
                     </div>
                   ) : (
-                    <div className="text-[10px] text-slate-400 font-medium flex items-center gap-1">
-                      <span className="w-2 h-2 rounded-full bg-slate-300 shrink-0" />
+                    <div className="text-[9px] sm:text-[10px] text-slate-400 font-medium flex items-center gap-1">
+                      <span className="w-1.5 sm:w-2 h-1.5 sm:h-2 rounded-full bg-slate-300 shrink-0" />
                       <span>Pending</span>
                     </div>
                   )}
                 </div>
 
                 {/* Footer / Action Affordance */}
-                <div className="pt-1 border-t border-slate-100 flex items-center justify-between text-[10px]">
+                <div className="pt-1 border-t border-slate-100 flex items-center justify-between text-[9px] sm:text-[10px]">
                   {report ? (
                     <span className="font-mono text-slate-500 group-hover:text-blue-700 font-medium transition-colors">
-                      View Audit →
+                      <span className="hidden sm:inline">View Audit →</span>
+                      <span className="sm:hidden">Audit →</span>
                     </span>
                   ) : eligibility.isEligible ? (
                     <span className="text-blue-700 font-semibold group-hover:underline flex items-center gap-0.5">
-                      <Plus className="w-3 h-3" /> Create
+                      <Plus className="w-2.5 sm:w-3 h-2.5 sm:h-3" />
+                      <span className="hidden sm:inline">Create</span>
+                      <span className="sm:hidden">Isi</span>
                     </span>
                   ) : isMissingDay ? (
                     <span className="text-amber-700 font-semibold flex items-center gap-0.5">
-                      <Bell className="w-2.5 h-2.5" /> Reminder
+                      <Bell className="w-2 sm:w-2.5 h-2 sm:h-2.5" />
+                      <span className="hidden sm:inline">Reminder</span>
+                      <span className="sm:hidden">Ingatkan</span>
                     </span>
                   ) : (
                     <span className="text-slate-400 flex items-center gap-0.5">
-                      <Lock className="w-2.5 h-2.5" /> Locked
+                      <Lock className="w-2 sm:w-2.5 h-2 sm:h-2.5" />
+                      <span className="hidden sm:inline">Locked</span>
                     </span>
                   )}
                 </div>

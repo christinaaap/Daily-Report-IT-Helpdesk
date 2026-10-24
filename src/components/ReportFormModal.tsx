@@ -1840,7 +1840,7 @@ export const ReportFormModal: React.FC<ReportFormModalProps> = ({ date }) => {
                   <strong className="text-blue-900 block text-sm font-bold">
                     Section 4: Physical Check Meeting Room (Inspeksi Fisik Ruang Rapat &amp; VTC)
                   </strong>
-                  Untuk inspeksi fasilitas ruang meeting dan VTC, Duty Engineer / Helpdesk wajib memeriksa audio pod, display video, kabel sharing, serta <strong>wajib melampirkan foto bukti fisik</strong> setiap ruangan sebelum laporan dapat disubmit.
+                  Untuk inspeksi fasilitas ruang meeting, Duty Engineer / Helpdesk wajib memeriksa audio pod, display video, kabel sharing, serta <strong>wajib melampirkan foto bukti fisik</strong> (Site Uso pukul 06.00 WITA &amp; HO Jkt pukul 07.00 WIB) sebelum laporan dapat disubmit.
                 </div>
               </div>
 
@@ -1871,6 +1871,9 @@ export const ReportFormModal: React.FC<ReportFormModalProps> = ({ date }) => {
                             <span>0{index + 1}. {room.roomName}</span>
                             <span className="text-[10px] font-mono text-slate-500">({room.location})</span>
                           </div>
+                          <span className="text-[10px] text-blue-700 font-mono font-medium block mt-0.5">
+                            {room.location === 'Site Uso' ? 'Wajib Cek Fisik 06.00 WITA' : 'Wajib Cek Fisik 07.00 WIB'}
+                          </span>
                         </div>
 
                         {room.photoEvidenceUrl ? (

@@ -748,7 +748,7 @@ export const ReportDetailModal: React.FC<ReportDetailModalProps> = ({ reportId }
                             </span>
                           </div>
                           <div className="absolute bottom-2 left-2 bg-slate-900/85 backdrop-blur-xs px-2.5 py-0.5 rounded text-[10px] font-mono text-white">
-                            {room.photoTimestamp || report.submittedAt || '06:15 WITA'}
+                            {room.photoTimestamp || report.submittedAt || (room.location === 'Site Uso' ? '06:15 WITA' : '07:15 WIB')}
                           </div>
                         </>
                       ) : (

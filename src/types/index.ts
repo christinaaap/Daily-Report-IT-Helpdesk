@@ -169,10 +169,11 @@ export interface PhysicalInspectionItem {
 export interface CompanyAsset {
   id: string;
   name: string;
-  category: 'SOFTWARE_LICENSE' | 'NETWORK_HARDWARE' | 'TELEPHONY' | 'SCADA' | 'OTHER';
+  category: 'SOFTWARE_LICENSE' | 'OTHER' | string;
+  customCategory?: string;
   capacityTotal: number;
   capacityUsed: number;
-  unit: string;
+  unit?: string;
   vendor?: string;
   notes?: string;
 }

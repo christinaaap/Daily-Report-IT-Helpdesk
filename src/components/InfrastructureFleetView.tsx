@@ -68,18 +68,18 @@ export const InfrastructureFleetView: React.FC = () => {
   const [editingAssetId, setEditingAssetId] = useState<string | null>(null);
   const [assetFormData, setAssetFormData] = useState<{
     name: string;
-    category: 'SOFTWARE_LICENSE' | 'NETWORK_HARDWARE' | 'TELEPHONY' | 'SCADA' | 'OTHER';
+    category: 'SOFTWARE_LICENSE' | 'OTHER';
+    customCategory: string;
     capacityTotal: number;
     capacityUsed: number;
-    unit: string;
     vendor: string;
     notes: string;
   }>({
     name: '',
     category: 'SOFTWARE_LICENSE',
+    customCategory: '',
     capacityTotal: 100,
     capacityUsed: 10,
-    unit: 'Seats',
     vendor: '',
     notes: '',
   });
@@ -210,9 +210,9 @@ export const InfrastructureFleetView: React.FC = () => {
     setAssetFormData({
       name: '',
       category: 'SOFTWARE_LICENSE',
+      customCategory: '',
       capacityTotal: 100,
-      capacityUsed: 10,
-      unit: 'Seats',
+      capacityUsed: 0,
       vendor: '',
       notes: '',
     });
@@ -221,12 +221,13 @@ export const InfrastructureFleetView: React.FC = () => {
 
   const handleStartEditAsset = (asset: CompanyAsset) => {
     setEditingAssetId(asset.id);
+    const isOther = asset.category !== 'SOFTWARE_LICENSE';
     setAssetFormData({
       name: asset.name,
-      category: asset.category,
+      category: isOther ? 'OTHER' : 'SOFTWARE_LICENSE',
+      customCategory: asset.customCategory || (isOther ? asset.category : ''),
       capacityTotal: asset.capacityTotal,
       capacityUsed: asset.capacityUsed,
-      unit: asset.unit,
       vendor: asset.vendor || '',
       notes: asset.notes || '',
     });
@@ -240,30 +241,31 @@ export const InfrastructureFleetView: React.FC = () => {
       return;
     }
 
+    if (assetFormData.category === 'OTHER' && !assetFormData.customCategory.trim()) {
+      showToast('Nama kategori lainnya wajib diisi.', 'error');
+      return;
+    }
+
+    const payload = {
+      name: assetFormData.name.trim(),
+      category: assetFormData.category === 'OTHER' ? (assetFormData.customCategory.trim() || 'OTHER') : 'SOFTWARE_LICENSE',
+      customCategory: assetFormData.category === 'OTHER' ? assetFormData.customCategory.trim() : undefined,
+      capacityTotal: Number(assetFormData.capacityTotal) || 0,
+      capacityUsed: Number(assetFormData.capacityUsed) || 0,
+      vendor: assetFormData.vendor.trim(),
+      notes: assetFormData.notes.trim(),
+    };
+
     if (editingAssetId) {
       const existing = companyAssets.find(a => a.id === editingAssetId);
       if (existing) {
         updateCompanyAsset({
           ...existing,
-          name: assetFormData.name.trim(),
-          category: assetFormData.category,
-          capacityTotal: Number(assetFormData.capacityTotal) || 0,
-          capacityUsed: Number(assetFormData.capacityUsed) || 0,
-          unit: assetFormData.unit.trim() || 'Unit',
-          vendor: assetFormData.vendor.trim(),
-          notes: assetFormData.notes.trim(),
+          ...payload,
         });
       }
     } else {
-      addCompanyAsset({
-        name: assetFormData.name.trim(),
-        category: assetFormData.category,
-        capacityTotal: Number(assetFormData.capacityTotal) || 0,
-        capacityUsed: Number(assetFormData.capacityUsed) || 0,
-        unit: assetFormData.unit.trim() || 'Unit',
-        vendor: assetFormData.vendor.trim(),
-        notes: assetFormData.notes.trim(),
-      });
+      addCompanyAsset(payload);
     }
 
     setIsAssetModalOpen(false);
@@ -420,7 +422,7 @@ export const InfrastructureFleetView: React.FC = () => {
 
                   {room.facilities && (
                     <div className="text-[11px] text-slate-600 mt-2 font-mono bg-white p-2 rounded border border-slate-100">
-                      <span className="font-semibold text-slate-700 block text-[10px]">Fasilitas:</span>
+                      <span className="font-semibold text-slate-700 block text-[10px]">Fasilitas Meeting Room:</span>
                       {room.facilities}
                     </div>
                   )}
@@ -433,8 +435,8 @@ export const InfrastructureFleetView: React.FC = () => {
                 </div>
 
                 <div className="pt-2 border-t border-slate-200/80 flex items-center justify-between text-xs">
-                  <span className="text-[10px] text-slate-400 font-mono">
-                    Wajib Cek Fisik 06.00 WITA
+                  <span className="text-[10px] font-mono font-medium text-slate-500">
+                    {room.location === 'Site Uso' ? 'Wajib Cek Fisik 06.00 WITA' : 'Wajib Cek Fisik 07.00 WIB'}
                   </span>
                   <div className="flex items-center gap-1">
                     <button
@@ -502,7 +504,7 @@ export const InfrastructureFleetView: React.FC = () => {
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {servers.map(server => (
               <div
                 key={server.id}
@@ -601,7 +603,7 @@ export const InfrastructureFleetView: React.FC = () => {
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {companyAssets.map(asset => {
               const pct = asset.capacityTotal > 0 ? Math.min(100, Math.round((asset.capacityUsed / asset.capacityTotal) * 100)) : 0;
               const remaining = Math.max(0, asset.capacityTotal - asset.capacityUsed);
@@ -620,15 +622,15 @@ export const InfrastructureFleetView: React.FC = () => {
                           </span>
                         )}
                       </div>
-                      <span className="text-[9px] font-mono px-2 py-0.5 rounded bg-slate-200 text-slate-700">
-                        {asset.category.replace('_', ' ')}
+                      <span className="text-[9px] font-mono px-2 py-0.5 rounded bg-amber-50 text-amber-900 border border-amber-200 font-semibold">
+                        {asset.customCategory || (asset.category === 'SOFTWARE_LICENSE' ? 'Software License' : asset.category.replace('_', ' '))}
                       </span>
                     </div>
 
                     <div className="mt-3 space-y-1">
                       <div className="flex items-center justify-between text-xs font-mono">
                         <span className="text-slate-600 font-semibold">
-                          {asset.capacityUsed} / {asset.capacityTotal} {asset.unit}
+                          {asset.capacityUsed} / {asset.capacityTotal} {asset.unit ? asset.unit : 'Terpakai'}
                         </span>
                         <span className={`font-bold ${pct > 90 ? 'text-rose-700' : 'text-slate-700'}`}>
                           {pct}%
@@ -645,7 +647,7 @@ export const InfrastructureFleetView: React.FC = () => {
                       </div>
 
                       <div className="text-[10px] text-emerald-700 font-mono mt-1">
-                        Sisa Kapasitas: {remaining} {asset.unit}
+                        Sisa Kapasitas: {remaining} {asset.unit ? asset.unit : 'Tersedia'}
                       </div>
                     </div>
 
@@ -752,10 +754,10 @@ export const InfrastructureFleetView: React.FC = () => {
               </div>
 
               <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-700">Fasilitas / Spesifikasi VTC</label>
+                <label className="text-xs font-bold text-slate-700">Fasilitas Meeting Room</label>
                 <input
                   type="text"
-                  placeholder="Contoh: Dual 85 inch 4K UHD, Polycom Mic, HDMI & Type-C"
+                  placeholder="Contoh: Dual 85 inch 4K UHD, Polycom Mic, HDMI & Type-C, TV Interaktif, Tab Poly TC10"
                   value={roomFormData.facilities}
                   onChange={e => setRoomFormData({ ...roomFormData, facilities: e.target.value })}
                   className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-blue-600 font-mono"
@@ -920,7 +922,7 @@ export const InfrastructureFleetView: React.FC = () => {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <label className="text-xs font-bold text-slate-700">Kategori Aset *</label>
                   <select
@@ -928,15 +930,12 @@ export const InfrastructureFleetView: React.FC = () => {
                     onChange={e =>
                       setAssetFormData({
                         ...assetFormData,
-                        category: e.target.value as any,
+                        category: e.target.value as 'SOFTWARE_LICENSE' | 'OTHER',
                       })
                     }
-                    className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-amber-600"
+                    className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-amber-600 font-medium"
                   >
-                    <option value="SOFTWARE_LICENSE">Software License</option>
-                    <option value="NETWORK_HARDWARE">Network Hardware</option>
-                    <option value="TELEPHONY">Telephony / Radio</option>
-                    <option value="SCADA">SCADA System</option>
+                    <option value="SOFTWARE_LICENSE">Software License / Lisensi Software</option>
                     <option value="OTHER">Lainnya</option>
                   </select>
                 </div>
@@ -945,7 +944,7 @@ export const InfrastructureFleetView: React.FC = () => {
                   <label className="text-xs font-bold text-slate-700">Vendor / Penyedia</label>
                   <input
                     type="text"
-                    placeholder="Contoh: Microsoft, Autodesk, Cisco"
+                    placeholder="Contoh: Microsoft, Autodesk, Oracle, SAP"
                     value={assetFormData.vendor}
                     onChange={e => setAssetFormData({ ...assetFormData, vendor: e.target.value })}
                     className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-amber-600"
@@ -953,14 +952,34 @@ export const InfrastructureFleetView: React.FC = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-3">
+              {/* Dynamic input for custom category when 'Lainnya' is selected */}
+              {assetFormData.category === 'OTHER' && (
+                <div className="space-y-1 bg-amber-50/60 p-3 rounded-lg border border-amber-200">
+                  <label className="text-xs font-bold text-amber-900 block">
+                    Nama Kategori Lainnya *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Contoh: Cloud Storage, Server Virtual, Tooling, Hardware"
+                    value={assetFormData.customCategory}
+                    onChange={e => setAssetFormData({ ...assetFormData, customCategory: e.target.value })}
+                    className="w-full bg-white border border-amber-300 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-amber-600 font-semibold"
+                  />
+                  <p className="text-[11px] text-amber-700 mt-1">
+                    Isi nama kategori aset atau perangkat khusus sesuai kebutuhan perusahaan.
+                  </p>
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <label className="text-xs font-bold text-slate-700">Kapasitas Total *</label>
                   <input
                     type="number"
                     min="1"
                     required
-                    placeholder="450"
+                    placeholder="Contoh: 100"
                     value={assetFormData.capacityTotal}
                     onChange={e => setAssetFormData({ ...assetFormData, capacityTotal: Number(e.target.value) })}
                     className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-amber-600 font-mono"
@@ -973,22 +992,10 @@ export const InfrastructureFleetView: React.FC = () => {
                     type="number"
                     min="0"
                     required
-                    placeholder="416"
+                    placeholder="Contoh: 10"
                     value={assetFormData.capacityUsed}
                     onChange={e => setAssetFormData({ ...assetFormData, capacityUsed: Number(e.target.value) })}
                     className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-amber-600 font-mono"
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-700">Satuan *</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="Seats / User"
-                    value={assetFormData.unit}
-                    onChange={e => setAssetFormData({ ...assetFormData, unit: e.target.value })}
-                    className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-amber-600"
                   />
                 </div>
               </div>
