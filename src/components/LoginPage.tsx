@@ -38,7 +38,6 @@ export const LoginPage: React.FC = () => {
   // Role administrator tidak ditampilkan di register - hanya Helpdesk atau Superior
   const [regRole, setRegRole] = useState<'HELPDESK_ENGINEER' | 'ICT_MANAGER'>('HELPDESK_ENGINEER');
   const [regLocation, setRegLocation] = useState<Location>('Site Uso');
-  const [regShift, setRegShift] = useState('Shift A (06.00 - 18.00 WITA)');
   const [regPhone, setRegPhone] = useState('');
   const [regPassword, setRegPassword] = useState('');
   const [showRegPassword, setShowRegPassword] = useState(false);
@@ -79,14 +78,6 @@ export const LoginPage: React.FC = () => {
     return () => clearInterval(interval);
   }, []);
 
-  // Update default shift when location changes
-  useEffect(() => {
-    if (regLocation === 'Site Uso') {
-      setRegShift('Shift A (06.00 - 18.00 WITA)');
-    } else {
-      setRegShift('Shift Normal (07.00 - 17.00 WIB)');
-    }
-  }, [regLocation]);
 
   // Handle Login
   const handleLoginSubmit = (e: React.FormEvent) => {
@@ -164,7 +155,6 @@ export const LoginPage: React.FC = () => {
         badgeNumber: regBadge.trim(),
         role: regRole,
         location: regLocation,
-        shift: regShift.trim(),
         phone: regPhone.trim(),
         password: trimmedPassword || undefined,
       });
@@ -494,7 +484,7 @@ export const LoginPage: React.FC = () => {
                     </p>
                   </div>
 
-                  {/* Lokasi & Shift */}
+                  {/* Lokasi Penempatan & Nomor Kontak */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                       <label className="block text-xs font-bold text-slate-700 mb-1">
@@ -512,22 +502,6 @@ export const LoginPage: React.FC = () => {
 
                     <div>
                       <label className="block text-xs font-bold text-slate-700 mb-1">
-                        Shift / Jadwal Kerja
-                      </label>
-                      <input
-                        type="text"
-                        value={regShift}
-                        onChange={e => setRegShift(e.target.value)}
-                        placeholder="Shift A (06.00 - 18.00 WITA)"
-                        className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-blue-700 font-mono"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Nomor Kontak & Kata Sandi */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-1">
                         Nomor Telepon / Kontak
                       </label>
                       <div className="relative">
@@ -541,30 +515,34 @@ export const LoginPage: React.FC = () => {
                         />
                       </div>
                     </div>
+                  </div>
 
-                    <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-1">
-                        Kata Sandi / PIN Akun
-                      </label>
-                      <div className="relative">
-                        <Lock className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
-                        <input
-                          type={showRegPassword ? 'text' : 'password'}
-                          value={regPassword}
-                          onChange={e => setRegPassword(e.target.value)}
-                          placeholder="Buat kata sandi..."
-                          className="w-full bg-white border border-slate-300 rounded-lg pl-8 pr-8 py-2 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-blue-700 font-mono"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setShowRegPassword(p => !p)}
-                          className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-700 cursor-pointer"
-                          title={showRegPassword ? 'Sembunyikan kata sandi' : 'Tampilkan kata sandi'}
-                        >
-                          {showRegPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                        </button>
-                      </div>
+                  {/* Kata Sandi / PIN Akun */}
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      Kata Sandi / PIN Akun
+                    </label>
+                    <div className="relative">
+                      <Lock className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
+                      <input
+                        type={showRegPassword ? 'text' : 'password'}
+                        value={regPassword}
+                        onChange={e => setRegPassword(e.target.value)}
+                        placeholder="Buat kata sandi..."
+                        className="w-full bg-white border border-slate-300 rounded-lg pl-8 pr-8 py-2 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-blue-700 font-mono"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowRegPassword(p => !p)}
+                        className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-700 cursor-pointer"
+                        title={showRegPassword ? 'Sembunyikan kata sandi' : 'Tampilkan kata sandi'}
+                      >
+                        {showRegPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                      </button>
                     </div>
+                    <p className="text-[10px] text-slate-500 mt-1.5">
+                      * Jadwal shift kerja akan diatur dan di-assign secara mingguan oleh Administrator melalui menu Roster Jadwal Shift.
+                    </p>
                   </div>
 
                   {/* Submit Button */}
