@@ -1,99 +1,141 @@
 # PT Donggi-Senoro LNG (DSLNG) — IT Helpdesk Daily Operations & Shift Reporting Portal
 
-Portal aplikasi web operasional dan pelaporan shift harian terintegrasi untuk Divisi ICT (Information & Communication Technology) **PT Donggi-Senoro LNG**, menghubungkan operasional di **Site Uso (Banggai, Sulawesi Tengah — WITA)** dan **Head Office (Sentra Mulia Jakarta — WIB)**.
+Portal aplikasi web operasional dan pelaporan shift harian terintegrasi untuk Divisi ICT (*Information & Communication Technology*) **PT Donggi-Senoro LNG**, menghubungkan operasional di **Site Uso (Banggai, Sulawesi Tengah — WITA)** dan **Head Office (Sentra Mulia Jakarta — WIB)**.
 
-Aplikasi ini dirancang untuk mematuhi tata kelola kepatuhan ISO 27001, audit trail terenkripsi, verifikasi jadwal pemeriksaan fisik fasilitas, serta alur tinjauan dan tanda tangan digital superior (*E-Signature Approval*).
+Aplikasi ini dibangun untuk menjamin standar tata kelola kepatuhan **ISO 27001**, kepatuhan audit operasional migas, integritas laporan dengan *cryptographic hashing*, verifikasi fisik fasilitas berkala, serta alur tinjauan dan tanda tangan digital superior (*E-Signature Approval*).
 
 ---
 
-## 1. Fitur Utama (Key Features)
+## 1. Fitur Utama (Core Features)
 
 ### A. Kalender Operasional & Manajemen Shift Roster
-- **Live Real-time Dual Clock**: Pemantauan waktu operasional secara berdampingan antara **Site Uso (WITA)** dan **HO Jakarta (WIB)**.
-- **Roster & Schedule Engine**: Pengaturan jadwal shift harian (*Shift A* dan *Shift B*) untuk teknisi *Helpdesk Engineer* serta penunjukan resmi *Duty Engineer* bertugas.
-- **Deteksi Laporan Terlewat (Missing Report Reminders)**: Notifikasi cerdas untuk hari-hari shift kerja yang belum memiliki pengiriman laporan harian.
+- **Live Real-time Dual Clock**: Jam digital ganda real-time yang memantau waktu operasional **Site Uso (WITA / UTC+8)** dan **HO Jakarta (WIB / UTC+7)** secara simultan.
+- **Roster & Schedule Engine**: 
+  - Penjadwalan shift kerja (*Shift A*, *Shift B*, *Normal Shift*) dikelola secara terpusat oleh **Administrator**.
+  - Penentuan resmi *Duty Engineer* bertugas per hari dan per lokasi.
+  - Perubahan shift dapat di-assign mingguan atau harian dengan fleksibel.
+- **Deteksi Laporan Terlewat (Missing Reports)**:
+  - Notifikasi cerdas untuk mendeteksi tanggal shift yang belum memiliki pengiriman laporan harian.
+  - Akses cepat langsung dari banner notifikasi menuju form pembuatan laporan pada tanggal terkait.
 
-### B. Form Pelaporan Harian 6 Bagian (Standard Shift Reporting)
-Setiap shift diwajibkan menyusun laporan komprehensif yang terbagi menjadi 6 seksi:
+### B. Formulir Pelaporan Harian 6 Bagian (Standardized 6-Section Shift Report)
+Pengisian laporan harian shift distandardisasi ke dalam 6 seksi terstruktur:
 1. **Section 1: Tiket & Metrik SLA\***:
-   - Pencatatan status tiket harian: *Open*, *On-Hold*, *Pending User*, dan *Closed Today*.
-   - Rincian kategori operasional: *Helpdesk*, *MES*, *ERP*, dan *Network / Telecom / Radio*.
-   - Input rincian tiket over-SLA (*SLA Breached* & *SLA At Risk*) dengan nomor tiket, PIC teknisi, over SLA duration, dan tindakan mitigasi.
+   - Pencatatan status volume tiket harian (*Open*, *On-Hold*, *Pending User*, dan *Closed Today*).
+   - Klasifikasi 4 pilar operasional: *Helpdesk*, *MES (Manufacturing Execution System)*, *ERP*, dan *Network / Telecom / Radio*.
+   - Tabel tiket bermasalah (*SLA Breached* & *SLA At Risk*) mencakup nomor tiket, PIC teknisi, durasi over-SLA, dan tindakan mitigasi.
 2. **Section 2: Server Check\***:
-   - Verifikasi status ketersediaan node server (*Online (Normal)*, *Degraded (Perhatian)*, *Offline (Gangguan)*).
-   - Sinkronisasi master data server yang dikelola melalui menu *Infrastructure Fleet*.
-3. **Section 3: MS365 & Software Others (Opsional)**:
-   - Pemantauan kuota lisensi (*Total Terbeli*, *Assigned / Terpakai*, dan *Available Seats*).
-   - Terhubung secara dinamis dengan aset software yang didaftarkan di *Infrastructure Fleet*.
+   - Pengecekan status ketersediaan node server (*Online (Normal)*, *Degraded (Perhatian)*, *Offline (Gangguan)*).
+   - Data server tersinkronisasi otomatis dari master data **Infrastructure Fleet**.
+   - *Catatan Kepatuhan*: Penambahan server baru hanya dapat dilakukan melalui menu Infrastructure Fleet (tidak dapat ditambah sembarangan saat pengisian laporan harian).
+3. **Section 3: MS365 & Software Lisensi (Opsional)**:
+   - Pemantauan alokasi lisensi (*Total Terbeli*, *Assigned / Terpakai*, dan *Available Seats*).
+   - Terhubung secara dinamis dengan daftar software yang telah didaftarkan di **Infrastructure Fleet**.
    - Formulir penugasan lisensi baru ke pengguna (*License Assignment*).
 4. **Section 4: Physical Check Meeting Room**:
-   - Inspeksi fasilitas video conference (Audio pod, display 4K, kabel HDMI/USB-C, Teams/Polycom).
-   - Jadwal cek fisik lokasi: **Pukul 06.00 WITA** untuk Site Uso dan **Pukul 07.00 WIB** untuk HO Jakarta sebelum briefing pagi.
-   - Lampiran bukti foto fisik langsung pada setiap ruang meeting yang terdaftar.
+   - Inspeksi fasilitas video conference dan ruang rapat (Audio pod, display TV/projector, kabel HDMI/Type-C, Polycom/Teams Rooms).
+   - Standar jam inspeksi fisik: **06.00 WITA** (Site Uso) dan **07.00 WIB** (HO Jakarta) sebelum jam kantor/briefing pagi dimulai.
+   - Lampiran bukti foto fisik langsung (*Photo Upload & Compression*) untuk setiap ruang rapat yang dicek.
 5. **Section 5: Mailbox & CrowdStrike Security**:
-   - Pemantauan kuota mailbox pengguna (>90% hampir penuh dan 100% penuh).
-   - Deteksi keamanan endpoint CrowdStrike Falcon (aktivitas mencurigakan/malicious & sensor agent offline >30 hari).
-   - Rincian identitas user/hostname terdampak dan tindakan karantina/pembersihan.
+   - Pemantauan kuota mailbox pengguna (>90% waspada dan 100% penuh).
+   - Pengecekan sensor keamanan endpoint **CrowdStrike Falcon** (deteksi ancaman malware/malicious dan sensor offline >30 hari).
+   - Pencatatan identitas user / hostname terdampak beserta tindakan isolasi atau karantina.
 6. **Section 6: Catatan Operasional & Handover Briefing**:
-   - Ringkasan eksekutif (*Executive Summary*) untuk pimpinan.
+   - Ringkasan eksekutif (*Executive Summary*) untuk konsumsi manajemen.
    - Catatan serah terima shift (*Shift Handover Briefing*) untuk tim jaga berikutnya.
-   - Pengecualian operasional: permintaan pengguna baru, tindak lanjut PO vendor, dan aset rusak (*Broken Assets*).
+   - Pencatatan aset rusak (*Broken Assets*), permintaan user baru, dan tindak lanjut PO/vendor.
 
 ### C. Infrastructure Fleet Management
-Menu terpusat untuk konfigurasi master data fasilitas ICT:
-- **Ruang Rapat & Fasilitas Meeting Room**: Pendaftaran ruang konferensi di Site Uso / HO Jakarta dengan spesifikasi perangkat VTC.
-- **Node Server Infrastruktur**: Pendaftaran server DC, ERP SAP, MES Telemetry, Core Radio TETRA, dan SCADA Data Diode.
-- **Sistem Perangkat Lunak, Lisensi & Aset**: Pendaftaran lisensi software enterprise (*SOFTWARE_LICENSE*) dan kategori kustom dinamis (*OTHER*).
+Modul terpusat bagi Administrator dan personel untuk mengelola master data aset ICT:
+- **Ruang Rapat & Fasilitas VTC**: Registrasi ruang rapat di Site Uso / HO Jakarta dengan detail perangkat audio/video.
+- **Node Server Infrastruktur**: Registrasi server Active Directory, ERP SAP, MES Telemetry, SCADA Data Diode, Radio TETRA, dan backup node.
+- **Sistem Perangkat Lunak & Lisensi**: Registrasi aplikasi enterprise (*SOFTWARE_LICENSE*) dan kategori utilitas (*OTHER*).
 
 ### D. Keamanan, E-Signature & Jejak Audit (ISO 27001)
-- **Immutable Lock Hash**: Setiap laporan yang diajukan dikunci menggunakan cryptographic hash SHA-256 untuk menjamin integritas data (anti-tamper).
-- **Superior Review Workflow**: Fitur tinjauan oleh *ICT Manager / Superior* dengan opsi *Approve* (disertai tanda tangan digital *Canvas E-Signature* & stempel sertifikasi digital) atau *Reject* (dengan catatan revisi wajib).
-- **Audit Trail**: Pencatatan riwayat autentikasi, pembuatan node, pengajuan laporan, dan tinjauan manajerial.
+- **Immutable Lock Cryptographic Hash**: Setiap laporan yang diajukan dikunci menggunakan hash SHA-256 untuk menjamin integritas data (anti-tamper).
+- **Superior Review & Approval Workflow**:
+  - *ICT Manager / Superior* meninjau laporan harian.
+  - Opsi persetujuan (*Approve*) dengan tanda tangan digital pada kanvas (*Canvas E-Signature*) serta stempel sertifikasi digital bertanda waktu.
+  - Opsi penolakan (*Reject*) dengan kewajiban mengisi alasan revisi kepada teknisi terkait.
+- **Audit Trail**: Pencatatan riwayat autentikasi login/logout, penambahan aset, pengajuan laporan, dan persetujuan manajerial secara lengkap dan transparan.
 
 ### E. Desain Responsif & Mobile-First
-- Dirancang optimal untuk layar **Desktop PC**, **Tablet**, hingga **Smartphone Mobile** tanpa memerlukan scroll horizontal yang menyulitkan pengguna di lapangan.
+- Antarmuka responsif penuh (*zero horizontal scroll*) yang nyaman digunakan pada monitor Desktop PC, Laptop, Tablet, hingga Layar Smartphone teknisi di lapangan.
 
 ---
 
-## 2. Kredensial Akses Bawaan (Default Login Credentials)
+## 2. Manajemen Akun & Hak Akses (Role-Based Access Control)
 
-Aplikasi dilengkapi dengan akun Super Administrator Active Directory bawaan:
+Aplikasi membedakan hak akses berdasarkan 3 peran (*Role*):
 
-| Peran (Role) | Email | Badge / NIK | Kata Sandi | Lokasi |
-| :--- | :--- | :--- | :--- | :--- |
-| **Super Administrator** | `admin.ict@donggi-senoro.com` | `00001` | `Pac-tina80` | Site Uso |
+| Peran (Role) | Hak Akses Utama |
+| :--- | :--- |
+| **Administrator (Super Admin)** | Akses penuh: Roster Jadwal Shift mingguan, Infrastructure Fleet, Manajemen Personel & Reset Password, Audit Trail, Pengisian & Review Laporan. |
+| **Superior / ICT Manager** | Akses peninjauan: Evaluasi laporan harian, Approval dengan Tanda Tangan Digital (E-Signature), Penolakan Revisi, dan Inspeksi Fleet. |
+| **Helpdesk Engineer** | Akses operasional: Pengisian Laporan Harian 6 Bagian, Cek Fisik Ruang Rapat, Pemantauan Server & Lisensi. |
 
-> **Catatan**: Akun helpdesk engineer dan superior tambahan dapat didaftarkan secara mandiri melalui menu registrasi akun atau dikonfigurasi langsung oleh Administrator.
+### Kredensial Bawaan (Default Login Credentials)
+Aplikasi dilengkapi akun Super Administrator Active Directory bawaan:
+
+| Parameter | Nilai Akun Bawaan |
+| :--- | :--- |
+| **Email** | `admin.ict@donggi-senoro.com` |
+| **Badge / NIK** | `00001` |
+| **Kata Sandi** | `Pac-tina80` |
+| **Lokasi** | Site Uso (Plant Batui - WITA) |
+
+### Alur Pendaftaran Akun Baru (Self-Registration)
+- Personel baru (*Helpdesk Engineer* atau *Superior*) dapat mendaftarkan akun secara mandiri melalui tab **Daftar Akun Baru**.
+- Pada formulir registrasi, **pengisian shift/jadwal kerja sengaja ditiadakan**.
+- **Alasan**: Jadwal kerja teknisi dan manager berubah dinamis setiap minggu dan diatur secara otoritatif oleh Administrator melalui menu **Roster Jadwal Shift**.
 
 ---
 
 ## 3. Kebijakan Data Bersih (Zero-Dummy Policy)
 
 Sistem ini menerapkan prinsip **data operasional bersih**:
-- **0 Data Dummy Bawaan**: Seluruh ruang meeting, node server, software lisensi, jadwal shift, dan laporan lampau tidak menggunakan data dummy statis.
-- Pengguna dan teknisi memulai dari basis data bersih dan mengisi aset riil melalui menu **Infrastructure Fleet** sebelum menyusun laporan harian shift kerja.
+- **0 Data Dummy Bawaan**: Seluruh ruang meeting, node server, lisensi software, jadwal shift, dan laporan lampau tidak menggunakan data dummy statis.
+- Data aset riil didaftarkan melalui menu **Infrastructure Fleet** sebelum teknisi menyusun laporan harian shift kerja.
 
 ---
 
-## 4. Teknologi & Arsitektur (Tech Stack)
+## 4. Alur Kerja Operasional Standar (Standard Operating Procedure)
 
-- **Frontend Core**: [React 18](https://react.dev/) + [TypeScript](https://www.typescriptlang.org/)
-- **Bundler & Build Tool**: [Vite](https://vitejs.dev/)
-- **Styling**: [Tailwind CSS v4](https://tailwindcss.com/)
-- **Iconography**: [Lucide React](https://lucide.dev/)
-- **Date & Calendar Logic**: Custom timezone-aware math (WITA UTC+8 & WIB UTC+7)
-- **State & Storage**: React Context API dengan sinkronisasi persisten `localStorage`
+1. **Langkah 1 — Registrasi & Autentikasi**:
+   - Teknisi masuk menggunakan email/Badge NIK dan kata sandi yang telah didaftarkan.
+2. **Langkah 2 — Penjadwalan Shift (Administrator)**:
+   - Administrator membuka modal **Roster Jadwal Shift** untuk mengatur shift harian teknisi (*Shift A / Shift B*) dan menunjuk *Duty Engineer*.
+3. **Langkah 3 — Pemeliharaan Master Data (Infrastructure Fleet)**:
+   - Pastikan ruang meeting, node server, dan software lisensi yang aktif telah didaftarkan di modul **Infrastructure Fleet**.
+4. **Langkah 4 — Pengisian Laporan Harian**:
+   - Klik tombol **Buat Laporan Hari Ini** atau pilih tanggal pada kalender.
+   - Isi keenam seksi formulir: Tiket SLA, Cek Server, Cek Lisensi, Cek Fisik Ruang Rapat (dengan foto), Cek Keamanan CrowdStrike & Mailbox, serta Catatan Handover.
+   - Ajukan laporan (*Submit Report*). Data akan terkunci (*Locked*) dengan hash kriptografi SHA-256.
+5. **Langkah 5 — Review & Approval Superior**:
+   - Superior / ICT Manager membuka laporan yang berstatus *Submitted*.
+   - Melakukan verifikasi data, membubuhkan tanda tangan digital e-signature, dan menyetujui laporan (*Approve*).
 
 ---
 
-## 5. Panduan Menjalankan Proyek (Getting Started)
+## 5. Teknologi & Dependensi (Tech Stack)
 
-### Prasyarat
+- **Frontend Framework**: [React 18](https://react.dev/) + [TypeScript](https://www.typescriptlang.org/)
+- **Build Tool**: [Vite](https://vitejs.dev/)
+- **CSS Framework**: [Tailwind CSS v4](https://tailwindcss.com/)
+- **Icon Pack**: [Lucide React](https://lucide.dev/)
+- **Timezone Calculation**: Native JavaScript `Intl.DateTimeFormat` (WITA UTC+8 & WIB UTC+7)
+- **State Management & Persistence**: React Context API terintegrasi dengan browser `localStorage`
+
+---
+
+## 6. Panduan Menjalankan Aplikasi Secara Lokal
+
+### Prasyarat Sistem
 - [Node.js](https://nodejs.org/) versi 18 atau yang lebih baru
-- `npm` atau package manager kompatibel (`bun`, `pnpm`, `yarn`)
+- `npm` (atau `yarn`, `pnpm`)
 
-### Langkah Instalasi
-1. Clone repositori atau buka direktori proyek:
+### Langkah Menjalankan
+1. Masuk ke direktori proyek:
    ```bash
    cd /app/applet
    ```
@@ -107,57 +149,60 @@ Sistem ini menerapkan prinsip **data operasional bersih**:
    ```bash
    npm run dev
    ```
-   Aplikasi akan berjalan secara lokal di port `3000` (e.g. `http://localhost:3000`).
+   Aplikasi akan aktif di `http://localhost:3000`.
 
-4. Build untuk tahap produksi:
-   ```bash
-   npm run build
-   ```
-
-5. Jalankan linting TypeScript:
+4. Validasi sintaksis TypeScript (Lint):
    ```bash
    npm run lint
    ```
 
+5. Build untuk produksi:
+   ```bash
+   npm run build
+   ```
+
 ---
 
-## 6. Struktur Direktori Proyek
+## 7. Struktur Direktori Proyek
 
 ```text
-├── index.html                   # Entry point dokumen HTML & metadata OpenGraph
-├── metadata.json                # Konfigurasi metadata aplikasi AI Studio
-├── package.json                 # Konfigurasi dependensi dan scripts npm
-├── vite.config.ts               # Konfigurasi build Vite & plugin Tailwind
-├── tsconfig.json                # Konfigurasi kompilasi TypeScript
-├── public/                      # Aset statis & logo perusahaan
+├── index.html                     # Entry point dokumen HTML & OpenGraph meta tags
+├── metadata.json                  # Metadata proyek AI Studio
+├── package.json                   # Konfigurasi dependensi dan scripts npm
+├── vite.config.ts                 # Konfigurasi build Vite & Tailwind CSS
+├── tsconfig.json                  # Konfigurasi compiler TypeScript
+├── README.md                      # Dokumentasi komprehensif sistem
+├── public/                        # Aset statis & logo perusahaan
 └── src/
-    ├── main.tsx                 # Entry point aplikasi React DOM
-    ├── App.tsx                  # Root component & routing tampilan modal
-    ├── index.css                # Global Tailwind CSS directives
+    ├── main.tsx                   # Entry point aplikasi React DOM
+    ├── App.tsx                    # Komponen root & navigasi modal
+    ├── index.css                  # Directives Tailwind CSS
     ├── types/
-    │   └── index.ts             # Definisi tipe data TypeScript & interface
+    │   └── index.ts               # Definisi tipe data TypeScript & interface
     ├── context/
-    │   └── AppContext.tsx       # State management global & persistence layer
+    │   └── AppContext.tsx         # State management global & persistence layer
     ├── data/
-    │   └── mockData.ts          # Baseline master data akun Administrator
+    │   └── mockData.ts            # Akun default Administrator
     ├── utils/
-    │   └── rosterLogic.ts       # Utilitas kalkulasi jadwal shift, roster & reminder
+    │   └── rosterLogic.ts         # Logika jadwal shift, roster mingguan & reminder
     └── components/
-        ├── Navbar.tsx                   # Top navigation bar, dual clock & mobile switcher
-        ├── CalendarDashboard.tsx        # Kalender bulanan, status tiket & ringkasan shift
-        ├── InfrastructureFleetView.tsx  # Master data server, ruang meeting & aset lisensi
-        ├── ReportFormModal.tsx          # Form wizard 6 seksi pelaporan harian shift
-        ├── ReportDetailModal.tsx        # Tinjauan detail laporan, print PDF & E-Signature
-        ├── ShiftRosterModal.tsx         # Manajemen alokasi shift engineer harian
-        ├── MissingRemindersModal.tsx    # Daftar reminder laporan shift yang terlewat
-        ├── ManageEngineersModal.tsx     # Manajemen akun teknisi & reset password
-        ├── AuditTrailModal.tsx          # Log audit aktivitas sistem ISO 27001
-        ├── PhotoUploadField.tsx         # Komponen upload & kompresi bukti foto fisik
-        └── ToastNotification.tsx        # Toast feedback operasional
+        ├── Navbar.tsx                     # Header navigasi, dual clock (WITA/WIB) & user menu
+        ├── LoginPage.tsx                  # Halaman autentikasi login & formulir registrasi akun
+        ├── CalendarDashboard.tsx          # Kalender bulanan, metrik tiket & filter status
+        ├── InfrastructureFleetView.tsx    # Manajemen server, ruang meeting & software lisensi
+        ├── ReportFormModal.tsx            # Form wizard 6 seksi pelaporan harian shift
+        ├── ReportDetailModal.tsx          # Detail laporan, cetak PDF & modal review superior
+        ├── DigitalSignaturePad.tsx        # Kanvas tanda tangan digital E-Signature
+        ├── RosterScheduleModal.tsx        # Pengaturan jadwal shift mingguan oleh Administrator
+        ├── MissingReportsModal.tsx        # Dialog pengingat laporan harian yang terlewat
+        ├── ManageEngineersModal.tsx       # Manajemen akun pengguna & reset password oleh Admin
+        ├── AuditTrailView.tsx             # Log aktivitas operasional terenkripsi (ISO 27001)
+        ├── PhotoUploadField.tsx           # Komponen upload & kompresi foto fisik ruang meeting
+        └── Toast.tsx                      # Notifikasi toast status operasional
 ```
 
 ---
 
-## 7. Lisensi & Hak Cipta
+## 8. Lisensi & Hak Cipta
 
-Dokumentasi dan sistem ini dikembangkan untuk standarisasi operasional **PT Donggi-Senoro LNG (DSLNG)**. Seluruh hak cipta dilindungi undang-undang.
+Dokumentasi dan sistem ini dikembangkan untuk standarisasi operasional teknologi informasi dan komunikasi **PT Donggi-Senoro LNG (DSLNG)**. Seluruh hak cipta dilindungi undang-undang.
